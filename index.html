@@ -433,7 +433,9 @@ textarea{resize:vertical;min-height:72px;line-height:1.55}
 .ide-attachment-chip:hover,.ide-attachment-chip.active{color:var(--text);border-color:var(--border2);font-weight:500}
 .ide-support-editor{border-top:1px solid var(--border);display:none;flex-direction:column;max-height:220px}
 .ide-support-editor.open{display:flex}
-.ide-support-editor textarea{flex:1;min-height:160px;font-family:monospace;font-size:12px;border:none;border-radius:0;resize:vertical}
+.ide-support-editor.open{position:relative;z-index:2}
+.ide-support-editor .ide-topbar{background:var(--bg);border-bottom:1px solid var(--border)}
+.ide-support-editor textarea{display:none}
 
 .ide-statusbar{display:flex;align-items:center;justify-content:space-between;
   padding:4px 10px;background:var(--surface2);border-top:1px solid var(--border);
@@ -608,6 +610,9 @@ textarea{resize:vertical;min-height:72px;line-height:1.55}
               onchange="onSkillIndexChosen()" style="display:none">
           </div>
           <div id="skill-index-status" style="margin-top:6px"></div>
+          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="btn btn-sm" onclick="fetchSkillIndexFromUpstream()">Fetch from upstream</button>
+          </div>
           <p class="hint" style="margin-top:6px">
             Drop the latest <code>SKILL_INDEX.json</code> from your skills hub.
             Saved to <code>app/data/</code> — re-upload anytime to refresh.
@@ -619,6 +624,10 @@ textarea{resize:vertical;min-height:72px;line-height:1.55}
       <div id="fork-status-box" style="display:none" class="card">
         <div class="card-title">Your fork</div>
         <div id="fork-status-body"></div>
+        <div id="fork-sync-actions" style="display:none;margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-sm" onclick="refreshForkStatus()">Check sync</button>
+          <button type="button" class="btn btn-sm btn-primary" id="fork-merge-btn" onclick="mergeUpstream()">Merge upstream into fork</button>
+        </div>
       </div>
 
       <div class="actions">
@@ -766,7 +775,9 @@ textarea{resize:vertical;min-height:72px;line-height:1.55}
           </button>
         </div>
 
+        <p class="hint" style="margin-bottom:.75rem">Not sure what to build? Browse existing skills for naming and trigger patterns.</p>
         <div class="actions" style="margin-top:1.5rem">
+          <button type="button" class="btn" onclick="openBrowser()">Browse skills</button>
           <button class="btn btn-primary" id="gen-btn" onclick="generate()">Generate SKILL.md →</button>
           <span class="status" id="s-gen"></span>
         </div>
@@ -834,9 +845,20 @@ textarea{resize:vertical;min-height:72px;line-height:1.55}
         <div class="pr-banner">
           <div class="pr-banner-top">
             <span id="pr-banner-title">📋 Fixing PR #—</span>
-            <a id="pr-banner-link" href="#" target="_blank" rel="noopener"
-               style="font-size:12px;color:inherit;opacity:.8">Open on GitHub ↗</a>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <a id="pr-banner-link" href="#" target="_blank" rel="noopener"
+                 style="font-size:12px;color:inherit;opacity:.8">Open on GitHub ↗</a>
+              <button type="button" class="btn btn-sm" onclick="refreshPRComments()">Refresh comments</button>
+              <span id="pr-comments-fetched" style="font-size:11px;color:var(--hint)"></span>
+            </div>
           </div>
+        </div>
+        <div id="pr-comments-panel" style="display:none;margin-top:.75rem">
+          <div class="comments-header" onclick="toggleComments()">
+            <span id="comments-toggle-label">▾ Review comments</span>
+            <span class="comment-badge" id="comments-count">0</span>
+          </div>
+          <div id="comments-body"></div>
         </div>
       </div>
 
@@ -1038,7 +1060,7 @@ textarea{resize:vertical;min-height:72px;line-height:1.55}
                     <code id="install-branch-display">—</code>
                   </div>
                   <button class="btn btn-primary" onclick="downloadInstallScript()" style="margin-top:8px">
-                    ↓ Download test-skill.sh
+                    ↓ Download test-<skill>.sh
                   </button>
                 </div>
               </div>
@@ -1049,7 +1071,7 @@ textarea{resize:vertical;min-height:72px;line-height:1.55}
               <div>
                 <div class="local-step-title">Run it — pass your local repo path</div>
                 <div class="local-step-body">
-                  <div class="code-block" id="install-run-cmd">bash test-skill.sh ~/projects/skills</div>
+                  <div class="code-block" id="install-run-cmd">bash test-&lt;skill&gt;.sh ~/projects/skills</div>
                   <p class="hint" style="margin-top:5px">
                     ⚠ Pass your <strong>local folder path</strong>, not a GitHub URL.<br>
                     If not cloned yet: <code>git clone https://github.com/<span id="install-fork-hint">your-fork/skills</span>.git ~/projects/skills</code>
@@ -1081,6 +1103,22 @@ textarea{resize:vertical;min-height:72px;line-height:1.55}
 
             <div class="local-step">
               <span class="local-step-num">5</span>
+              <div>
+                <div class="local-step-title">Run hub evals (optional)</div>
+                <div class="local-step-body">
+                  <div class="field" style="margin-bottom:8px">
+                    <label>Local skills-hub path</label>
+                    <input type="text" id="test-hub-root" placeholder="~/projects/skills-hub" style="width:100%">
+                  </div>
+                  <button type="button" class="btn btn-sm btn-primary" id="run-evals-btn" onclick="runHubEvals()">Run cli/run-evals.sh</button>
+                  <span class="status" id="s-run-evals"></span>
+                  <pre id="run-evals-log" class="test-context-pre" style="display:none;margin-top:8px;max-height:200px;overflow:auto"></pre>
+                </div>
+              </div>
+            </div>
+
+            <div class="local-step">
+              <span class="local-step-num">6</span>
               <div>
                 <div class="local-step-title">Restore main when done</div>
                 <div class="local-step-body">
@@ -1266,14 +1304,15 @@ const cfg   = { token:"", repo:"", upstream:"", branch:"main", path:"skills/", a
 let   slug  = "";
 let   validationIssues = [];
 
-/** skills-hub folder groups (SKILL_INDEX.json categories). */
-const HUB_SKILL_CATEGORIES = [
-  "adoption-enablement", "ai-acceleration", "ai-factory", "astro", "console",
-  "data-analysis", "dataverse-data-products", "dataverse-platform", "dataverse-release-architect",
-  "devops", "google", "google-meetings", "jira", "plan-and-experiment-lifecycle",
-  "repository-activity-reporter", "resume-scanner", "sales-assistant", "secops",
-  "skills-core", "team-enablement", "transcript-to-adr", "ux-engineering",
+/** Fallback when SKILL_INDEX.json is not loaded yet. */
+const CATEGORY_FALLBACK = [
+  "dataverse-data-products", "devops", "skills-core", "adoption-enablement", "jira",
 ];
+
+function getCategoryList() {
+  const live = window.HUB_SKILL_CATEGORIES;
+  return (live && live.length) ? live : CATEGORY_FALLBACK;
+}
 
 function normalizePathPrefix(p) {
   const s = (p || "skills/").trim().replace(/\\/g, "/");
@@ -1294,7 +1333,7 @@ function initSkillCategorySelect() {
   if (!sel) return;
   const keep = sel.value;
   sel.innerHTML = '<option value="">Standalone — skills/&lt;skill-name&gt;/</option>';
-  HUB_SKILL_CATEGORIES.forEach(cat => {
+  getCategoryList().forEach(cat => {
     const opt = document.createElement("option");
     opt.value = cat;
     opt.textContent = cat + " — skills/" + cat + "/";
@@ -1308,7 +1347,7 @@ function categoryFromPathPrefix(prefix) {
   const rest = p.replace(/^skills\//, "");
   const segs = rest.split("/").filter(Boolean);
   if (!segs.length) return "";
-  if (segs.length >= 1 && HUB_SKILL_CATEGORIES.includes(segs[0])) return segs[0];
+  if (segs.length >= 1 && getCategoryList().includes(segs[0])) return segs[0];
   return "";
 }
 
@@ -1383,15 +1422,15 @@ function loadSavedConfig() {
       updateInstallPanel();
       updateSidebarStatus();
       if (saved.repo) {
-        el("fork-status-box").style.display = "block";
-        el("fork-status-body").innerHTML = `
+        renderForkStatus(`
           <div class="val-item pass" style="margin-bottom:8px">
             <span class="val-icon">✓</span>
             <span>Fork: <strong>${saved.repo}</strong></span>
           </div>
           <div style="font-size:12.5px;color:var(--muted)">
             → PR to <code>${saved.upstream || "upstream"}</code>
-          </div>`;
+          </div>`);
+        refreshForkStatus();
       }
       goTo(1);
     }
@@ -1588,6 +1627,22 @@ function refreshAttachmentBar() {
   });
 }
 
+function monacoLangForLabel(label) {
+  const ext = "." + (label?.split("/").pop()?.split(".").pop() || "").toLowerCase();
+  if (ext === ".json") return "json";
+  if (ext === ".md") return "markdown";
+  return "plaintext";
+}
+
+function syncSkillModelFromEditor() {
+  if (!monacoReady || !monacoEditor) return;
+  const val = monacoEditor.getModel() === supportMonacoModel
+    ? (skillMonacoModel ? skillMonacoModel.getValue() : el("skill-preview").value)
+    : monacoEditor.getValue();
+  el("skill-preview").value = val;
+  if (skillMonacoModel) skillMonacoModel.setValue(val);
+}
+
 async function openSupportEditor(rowId) {
   const row = el(`file-row-${rowId}`);
   if (!row) return;
@@ -1597,32 +1652,86 @@ async function openSupportEditor(rowId) {
   const editable = [".md", ".txt", ".json", ".csv"].includes(ext);
   activeSupportRowId = rowId;
   el("ide-support-path").textContent = label || rowId;
+  const text = row.dataset.cachedText || "";
   const ta = el("ide-support-preview");
-  ta.value = row.dataset.cachedText || "";
+  ta.value = text;
   ta.readOnly = !editable;
+
+  initIDE();
   const wrap = el("ide-support-editor");
   wrap.classList.add("open");
   wrap.setAttribute("aria-hidden", "false");
-  el("monaco-container").style.display = "none";
-  el("skill-preview").style.display = "none";
-  if (monacoReady && monacoEditor) monacoEditor.getDomNode().style.display = "none";
-  refreshAttachmentBar();
-  if (editable) {
-    ta.oninput = () => { row.dataset.cachedText = ta.value; };
+  const pathEl = el("preview-path");
+  if (pathEl) pathEl.style.display = "none";
+
+  if (monacoReady && monacoEditor && editable) {
+    syncSkillModelFromEditor();
+    if (!skillMonacoModel) {
+      skillMonacoModel = monaco.editor.createModel(
+        el("skill-preview").value || "",
+        "markdown",
+        monaco.Uri.parse("inmemory://skill/SKILL.md")
+      );
+    } else {
+      el("skill-preview").value = skillMonacoModel.getValue();
+    }
+    if (supportMonacoModel) supportMonacoModel.dispose();
+    supportMonacoModel = monaco.editor.createModel(
+      text,
+      monacoLangForLabel(label),
+      monaco.Uri.parse("inmemory://support/" + (label || rowId).replace(/\s/g, "_"))
+    );
+    monacoEditor.setModel(supportMonacoModel);
+    supportMonacoModel.onDidChangeContent(() => {
+      row.dataset.cachedText = supportMonacoModel.getValue();
+      ta.value = row.dataset.cachedText;
+    });
+    el("monaco-container").style.display = "";
+    el("skill-preview").style.display = "none";
+    st("ide-status-text", "Editing: " + (label || rowId), "");
+  } else {
+    el("monaco-container").style.display = "none";
+    el("skill-preview").style.display = editable ? "none" : "none";
+    if (monacoReady && monacoEditor) monacoEditor.getDomNode().style.display = "none";
+    if (editable) ta.oninput = () => { row.dataset.cachedText = ta.value; };
+    ta.style.display = editable ? "block" : "none";
   }
+  refreshAttachmentBar();
 }
 
 function closeSupportEditor() {
+  if (activeSupportRowId && supportMonacoModel) {
+    const row = el(`file-row-${activeSupportRowId}`);
+    if (row) row.dataset.cachedText = supportMonacoModel.getValue();
+    supportMonacoModel.dispose();
+    supportMonacoModel = null;
+  }
   activeSupportRowId = null;
   const wrap = el("ide-support-editor");
   if (wrap) {
     wrap.classList.remove("open");
     wrap.setAttribute("aria-hidden", "true");
   }
-  el("monaco-container").style.display = "";
+  const ta = el("ide-support-preview");
+  if (ta) ta.style.display = "none";
+  const pathEl = el("preview-path");
+  if (pathEl) pathEl.style.display = "";
+
   if (monacoReady && monacoEditor) {
+    if (!skillMonacoModel) {
+      skillMonacoModel = monaco.editor.createModel(
+        el("skill-preview").value || "",
+        "markdown",
+        monaco.Uri.parse("inmemory://skill/SKILL.md")
+      );
+    }
+    monacoEditor.setModel(skillMonacoModel);
+    el("skill-preview").value = skillMonacoModel.getValue();
+    el("monaco-container").style.display = "";
     monacoEditor.getDomNode().style.display = "";
+    st("ide-status-text", "Ready", "");
   } else {
+    el("monaco-container").style.display = "none";
     el("skill-preview").style.display = "";
   }
   refreshAttachmentBar();
@@ -1637,6 +1746,10 @@ function populateTestContext() {
   const ctx = el("test-skill-context");
   if (ctx) ctx.textContent = content || "(no skill content yet — go back and generate)";
   updateLocalInstallPanel();
+  const hubIn = el("test-hub-root");
+  if (hubIn && !hubIn.value) {
+    try { hubIn.value = localStorage.getItem("skills-composer-hub-root") || ""; } catch (e) {}
+  }
 }
 
 function updateLocalInstallPanel() {
@@ -1775,6 +1888,36 @@ echo ""
   a.download = `test-${skillSlug}.sh`;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+
+async function runHubEvals() {
+  const hubRoot = (el("test-hub-root")?.value || "").trim();
+  const skillSlug = slug || v("f-name").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  if (!hubRoot) { st("s-run-evals", "Enter local skills-hub path", "err"); return; }
+  if (!skillSlug) { st("s-run-evals", "Set skill name first", "err"); return; }
+  try { localStorage.setItem("skills-composer-hub-root", hubRoot); } catch (e) {}
+  const btn = el("run-evals-btn");
+  const logEl = el("run-evals-log");
+  if (btn) btn.disabled = true;
+  st("s-run-evals", "Running evals…", "spin");
+  if (logEl) { logEl.style.display = "block"; logEl.textContent = ""; }
+  try {
+    const res = await fetch("/api/run-evals", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hubRoot, skillSlug }),
+    });
+    const data = await res.json();
+    const out = [data.stdout, data.stderr].filter(Boolean).join("\n");
+    if (logEl) logEl.textContent = out || JSON.stringify(data, null, 2);
+    st("s-run-evals", data.ok ? "Evals passed" : "Evals failed", data.ok ? "ok" : "err");
+  } catch (e) {
+    if (logEl) logEl.textContent = e.message;
+    st("s-run-evals", e.message, "err");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 async function testSkill() {
@@ -1946,18 +2089,19 @@ async function setupAndFork() {
     updateSidebarStatus();
 
     // 5. Show fork status
-    el("fork-status-box").style.display = "block";
-    el("fork-status-body").innerHTML = `
+    renderForkStatus(`
       <div class="val-item pass" style="margin-bottom:8px">
         <span class="val-icon">✓</span>
         <span>${isNew ? "Fork created" : "Fork found"}: <strong>${forkRepo}</strong></span>
       </div>
       <div style="font-size:12.5px;color:var(--muted)">
         Contributions go to <code>${forkRepo}</code> → PR to <code>${upstream}</code>
-      </div>`;
+      </div>`);
+
+    await fetchSkillIndexFromUpstream();
+    await refreshForkStatus();
 
     st("s-setup","");
-    // Small delay so user sees the fork status before moving on
     await new Promise(r => setTimeout(r, 900));
     goTo(1);
 
@@ -1965,6 +2109,102 @@ async function setupAndFork() {
     st("s-setup", e.message, "err");
   } finally {
     btn.disabled = false;
+  }
+}
+
+
+function renderForkStatus(extraHtml) {
+  const box = el("fork-status-box");
+  const body = el("fork-status-body");
+  const actions = el("fork-sync-actions");
+  if (!box || !body) return;
+  if (cfg.repo) {
+    box.style.display = "block";
+    if (actions) actions.style.display = cfg.token && cfg.upstream ? "flex" : "none";
+  }
+  if (extraHtml) body.innerHTML = extraHtml;
+}
+
+async function refreshForkStatus() {
+  if (!cfg.token || !cfg.repo || !cfg.upstream) {
+    st("s-setup", "Configure token, fork, and upstream first", "warn");
+    return;
+  }
+  const branch = cfg.branch || "main";
+  const [upOwner] = cfg.upstream.split("/");
+  const basehead = `${upOwner}:${branch}...${cfg.repo.split("/")[0]}:${branch}`;
+  st("s-setup", "Checking fork sync…", "spin");
+  try {
+    const cmp = await gh("GET", `https://api.github.com/repos/${cfg.repo}/compare/${basehead}`);
+    if (cmp.message) throw new Error(cmp.message);
+    const behind = cmp.behind_by ?? 0;
+    const ahead = cmp.ahead_by ?? 0;
+    const status = behind === 0 && ahead === 0
+      ? `<div class="val-item pass"><span class="val-icon">✓</span> In sync with <code>${cfg.upstream}</code> (${branch})</div>`
+      : `<div class="val-item warn"><span class="val-icon">↕</span> Behind upstream: <strong>${behind}</strong> · Ahead: <strong>${ahead}</strong></div>`;
+    renderForkStatus(`
+      <div class="val-item pass" style="margin-bottom:8px"><span class="val-icon">✓</span> Fork: <strong>${cfg.repo}</strong></div>
+      ${status}
+      <div style="font-size:12.5px;color:var(--muted);margin-top:6px">PR target: <code>${cfg.upstream}</code></div>`);
+    st("s-setup", "", "");
+  } catch (e) {
+    st("s-setup", e.message, "err");
+  }
+}
+
+async function mergeUpstream() {
+  if (!cfg.token || !cfg.repo) { st("s-setup", "GitHub token and fork required", "err"); return; }
+  const btn = el("fork-merge-btn");
+  if (btn) btn.disabled = true;
+  st("s-setup", "Merging upstream…", "spin");
+  try {
+    const res = await gh("POST", `https://api.github.com/repos/${cfg.repo}/merge-upstream`, {
+      branch: cfg.branch || "main",
+    });
+    if (res.message && !res.merge_type) throw new Error(res.message);
+    await refreshForkStatus();
+    st("s-setup", "Upstream merged into fork", "ok");
+  } catch (e) {
+    st("s-setup", e.message, "err");
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+function updateSkillIndexStatus(count) {
+  const statusEl = el("skill-index-status");
+  if (!statusEl) return;
+  if (count > 0) {
+    statusEl.innerHTML = `<span class="status ok">✓ ${count} skills in index · ${new Date().toLocaleString()}</span>`;
+  }
+}
+
+async function fetchSkillIndexFromUpstream() {
+  if (!cfg.token || !cfg.upstream) {
+    st("s-setup", "Set GitHub token and upstream repo in Setup", "err");
+    return false;
+  }
+  const statusEl = el("skill-index-status");
+  if (statusEl) statusEl.innerHTML = '<span class="status spin">Fetching SKILL_INDEX.json from upstream…</span>';
+  try {
+    const [owner, repo] = cfg.upstream.split("/");
+    const meta = await gh("GET", `https://api.github.com/repos/${owner}/${repo}/contents/SKILL_INDEX.json?ref=${cfg.branch || "main"}`);
+    if (meta.message) throw new Error(meta.message);
+    const content = atob((meta.content || "").replace(/\n/g, ""));
+    const res = await fetch("/api/upload-skill-index", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || "Upload failed");
+    indexLoaded = false;
+    await fetchSkillIndex(true);
+    updateSkillIndexStatus(result.count || skillIndex.length);
+    return true;
+  } catch (e) {
+    if (statusEl) statusEl.innerHTML = `<span class="status err">✗ ${escapeHtml(e.message)}</span>`;
+    return false;
   }
 }
 
@@ -2467,39 +2707,6 @@ function toggleSection(bodyId, iconId) {
   const open = body.style.display === "none";
   body.style.display = open ? "" : "none";
   icon.textContent   = open ? "▴ hide" : "▾ show";
-}
-
-// ── Editor helpers — works for both single and split pane ────────────────────
-function getSkillContent() {
-  // Split pane is active when visible
-  if (el("split-pane").style.display !== "none") {
-    return el("skill-preview-split").textContent.trim();
-  }
-  return el("skill-preview").textContent.trim();
-}
-
-function setSkillContent(content) {
-  el("skill-preview").textContent       = content;
-  el("skill-preview-split").textContent = content;
-}
-
-function setSkillPath(path) {
-  el("preview-path").textContent       = path;
-  el("preview-path-split").textContent = path;
-}
-
-function showPRMode() {
-  el("review-header-normal").style.display = "none";
-  el("review-header-pr").style.display     = "";
-  el("split-pane").style.display           = "";
-  el("single-pane").style.display          = "none";
-}
-
-function showNormalMode() {
-  el("review-header-normal").style.display = "";
-  el("review-header-pr").style.display     = "none";
-  el("split-pane").style.display           = "none";
-  el("single-pane").style.display          = "";
 }
 
 let activeTab = "create";
@@ -3235,8 +3442,33 @@ function copyInstall() {
 
 // ── PR review comments ────────────────────────────────────────────────────────
 let commentsOpen = true;
+let prCommentsCache = [];
+let loadedPrNumForComments = "";
+
+function prCommentKey(prNum, idx) {
+  return `sc-pr-${prNum}-${idx}`;
+}
+
+function isCommentAddressed(prNum, idx) {
+  try {
+    return sessionStorage.getItem(prCommentKey(prNum, idx)) === "1";
+  } catch (e) { return false; }
+}
+
+function toggleCommentAddressed(prNum, idx) {
+  try {
+    const k = prCommentKey(prNum, idx);
+    sessionStorage.setItem(k, isCommentAddressed(prNum, idx) ? "0" : "1");
+    renderComments(prCommentsCache);
+  } catch (e) { /* ignore */ }
+}
+
+async function refreshPRComments() {
+  if (loadedPrNumForComments) await loadPRComments(loadedPrNumForComments);
+}
 
 async function loadPRComments(prNum) {
+  loadedPrNumForComments = String(prNum);
   const prRepo = loadedPrRepo || cfg.repo;
   try {
     // Fetch PR metadata, general comments, and inline review comments in parallel
@@ -3294,10 +3526,20 @@ async function loadPRComments(prNum) {
     }
 
     allComments.sort((a, b) => new Date(a.time) - new Date(b.time));
+    prCommentsCache = allComments;
     renderComments(allComments);
+    const fetched = el("pr-comments-fetched");
+    if (fetched) {
+      fetched.textContent = "Updated " + new Date().toLocaleTimeString();
+    }
+    if (allComments.length) {
+      appendChatMsg(
+        "ai",
+        `Loaded ${allComments.length} PR comment(s). Use the panel above or ask me to address them.`
+      );
+    }
 
   } catch(e) {
-    // Non-fatal — still show the editor, just no comments
     hidePRContext();
   }
 }
@@ -3314,7 +3556,7 @@ function renderComments(comments) {
 
   count.textContent = `${comments.length} comment${comments.length > 1 ? "s" : ""}`;
 
-  body.innerHTML = comments.map(c => {
+  body.innerHTML = comments.map((c, idx) => {
     const time = new Date(c.time).toLocaleString(undefined, {
       month:"short", day:"numeric", hour:"2-digit", minute:"2-digit"
     });
@@ -3323,20 +3565,42 @@ function renderComments(comments) {
       : c.type === "inline"
       ? `<span class="comment-type">inline</span>`
       : "";
+    const prNum = loadedPrNumForComments || loadedPrNum || "";
+    const addressed = prNum && isCommentAddressed(prNum, idx);
     const fileTag = c.file
-      ? `<div class="comment-file">${c.file}</div>`
+      ? `<button type="button" class="comment-file" style="cursor:pointer"
+          onclick="openCommentFile(${JSON.stringify(c.file)})">${escapeHtml(c.file)}</button>`
       : "";
     return `
-      <div class="comment-item">
+      <div class="comment-item" style="${addressed ? "opacity:.55" : ""}">
         <div class="comment-meta">
-          <span class="comment-author">@${c.author}</span>
+          <span class="comment-author">@${escapeHtml(c.author)}</span>
           <span class="comment-time">${time}</span>
           ${typeLabel}
+          ${prNum ? `<label style="margin-left:auto;font-size:11px;cursor:pointer">
+            <input type="checkbox" ${addressed ? "checked" : ""}
+              onchange="toggleCommentAddressed('${prNum}', ${idx})"> Addressed</label>` : ""}
         </div>
         ${fileTag}
-        <div class="comment-body">${c.body.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
+        <div class="comment-body">${escapeHtml(c.body)}</div>
       </div>`;
   }).join("");
+}
+
+function escapeHtml(s) {
+  return String(s || "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function openCommentFile(repoPath) {
+  if (!repoPath) return;
+  const norm = repoPath.replace(/^\/+/, "");
+  document.querySelectorAll("[id^='file-row-']").forEach(row => {
+    const rid = row.id.replace("file-row-", "");
+    const label = fileRowLabel(rid);
+    if (label === norm || label.endsWith("/" + norm) || norm.endsWith(label)) {
+      openSupportEditor(rid);
+    }
+  });
 }
 
 function toggleComments() {
@@ -3376,8 +3640,7 @@ async function onSkillIndexChosen() {
     const result = await res.json();
     if (!res.ok) throw new Error(result.error || "Upload failed");
 
-    statusEl.innerHTML =
-      `<span class="status ok">✓ ${skills.length} skills loaded — browser ready</span>`;
+    updateSkillIndexStatus(skills.length);
 
     // Reload the index in the browser
     indexLoaded = false;
@@ -3439,6 +3702,7 @@ async function fetchSkillIndex(force) {
 
     filteredSkills = [...skillIndex];
     renderSkillCards();
+    updateSkillIndexStatus(skillIndex.length);
 
   } catch(e) {
     el("browser-loading-msg").textContent =
@@ -3556,15 +3820,24 @@ async function previewSkillCard(skillName) {
 }
 
 // ── Duplicate detection ───────────────────────────────────────────────────────
-function checkDuplicate(slug) {
+function checkDuplicate(slugVal) {
   const warn = el("duplicate-warn");
   if (!warn) return;
-  if (!indexLoaded || !slug) { warn.style.display="none"; return; }
-  const exists = skillIndex.find(s => s.name === slug);
+  if (!slugVal) { warn.style.display = "none"; return; }
+  if (!indexLoaded) {
+    warn.style.display = "block";
+    warn.innerHTML = 'Upload or fetch <code>SKILL_INDEX.json</code> in Setup to check for duplicate names.';
+    return;
+  }
+  const norm = slugVal.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  const exists = skillIndex.find(s => s.name === slugVal || s.name === norm);
   if (exists) {
     warn.style.display = "block";
-    warn.dataset.slug  = slug;
-    warn.dataset.path  = exists.path || "";
+    warn.dataset.slug = exists.name;
+    warn.dataset.path = exists.path || "";
+    warn.innerHTML = `⚠ <strong>${escapeHtml(exists.name)}</strong> already exists (${escapeHtml(exists.category || "skills")}). `
+      + `<a href="#" onclick="loadExistingFromDuplicate(event)">Load for editing →</a> `
+      + `<a href="#" onclick="event.preventDefault();openBrowser();el('browser-search').value='${escapeHtml(exists.name)}';filterSkills();">Browse →</a>`;
   } else {
     warn.style.display = "none";
   }
@@ -3594,6 +3867,8 @@ function debounce(fn, ms) {
 
 let monacoEditor = null;
 let monacoReady  = false;
+let skillMonacoModel = null;
+let supportMonacoModel = null;
 let ideAiHistory = []; // [{role, content}]
 
 // ── Monaco init (called when Review panel opens) ──────────────────────────────
@@ -3640,6 +3915,7 @@ function initIDE() {
       if (btn) btn.style.display = (sel && !sel.isEmpty()) ? '' : 'none';
     });
 
+    skillMonacoModel = monacoEditor.getModel();
     monacoReady = true;
     el('skill-preview').style.display  = 'none';
     el('monaco-container').style.display = '';
@@ -3665,7 +3941,11 @@ function getSkillContent() {
 
 function setSkillContent(content) {
   el('skill-preview').value = content;
-  if (monacoReady && monacoEditor) monacoEditor.setValue(content);
+  if (monacoReady && monacoEditor) {
+    if (activeSupportRowId) closeSupportEditor();
+    if (skillMonacoModel) skillMonacoModel.setValue(content);
+    else monacoEditor.setValue(content);
+  }
 }
 
 function setSkillPath(path) {
@@ -3677,46 +3957,18 @@ function copySkill() {
     .then(() => { st('ide-status-text','Copied!','ok'); setTimeout(()=>st('ide-status-text',''),1500); });
 }
 
-// ── PR mode / normal mode ─────────────────────────────────────────────────────
 function showPRMode() {
-  const h = el('review-header-pr'); if (h) h.style.display = '';
+  const h = el("review-header-pr");
+  if (h) h.style.display = "";
+  const panel = el("pr-comments-panel");
+  if (panel) panel.style.display = "";
 }
 function showNormalMode() {
-  const h = el('review-header-pr'); if (h) h.style.display = 'none';
+  const h = el("review-header-pr");
+  if (h) h.style.display = "none";
+  const panel = el("pr-comments-panel");
+  if (panel) panel.style.display = "none";
 }
-
-// ── PR comments → inject into AI chat ────────────────────────────────────────
-async function loadPRComments(prNum) {
-  const {repo} = cfg;
-  if (!repo) return;
-  try {
-    const [prData, issueComments, reviewComments, reviews] = await Promise.all([
-      gh("GET", `https://api.github.com/repos/${repo}/pulls/${prNum}`),
-      gh("GET", `https://api.github.com/repos/${prRepo}/issues/${prNum}/comments`),
-      gh("GET", `https://api.github.com/repos/${prRepo}/pulls/${prNum}/comments`),
-      gh("GET", `https://api.github.com/repos/${prRepo}/pulls/${prNum}/reviews`),
-    ]);
-    if (prData.html_url) {
-      el('pr-banner-link').href = prData.html_url;
-      el('pr-banner-title').textContent = `📋 PR #${prNum}: ${prData.title || ''}`;
-    }
-    const all = [];
-    (issueComments || []).forEach(c => all.push(`**@${c.user?.login}**: ${c.body}`));
-    (reviewComments || []).forEach(c => all.push(`**@${c.user?.login}** (inline on \`${c.path}\`): ${c.body}`));
-    (reviews || []).forEach(r => { if (r.body?.trim()) all.push(`**@${r.user?.login}** [${r.state}]: ${r.body}`); });
-    if (all.length) {
-      appendChatMsg('ai', 'PR review comments:\n\n' + all.join('\n\n') + '\n\n---\nHow would you like to address these?');
-    }
-  } catch(e) { /* non-fatal */ }
-}
-
-// Backward compat stubs (old PR split-pane code may call these)
-function renderComments(comments) {
-  if (!comments?.length) return;
-  const msg = comments.map(c => `**@${c.author}** [${c.type}]: ${c.body}`).join('\n\n');
-  appendChatMsg('ai', 'PR comments:\n\n' + msg);
-}
-function toggleComments() {}
 
 // ── Skill tree (read-only, used by renderSkillTree) ───────────────────────────
 // renderSkillTree writes to #skill-tree which no longer exists; make it a no-op

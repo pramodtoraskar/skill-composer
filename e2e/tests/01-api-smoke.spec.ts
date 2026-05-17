@@ -28,6 +28,19 @@ test.describe("API smoke", () => {
     });
   });
 
+  test("POST /api/run-evals rejects missing hub path", async ({ request }) => {
+    const res = await request.post("/api/run-evals", {
+      data: { hubRoot: "", skillSlug: "demo-skill" },
+    });
+    expect(
+      res.status(),
+      "Got 404 — restart serve-app.sh on :3747 (stale server without /api/run-evals)",
+    ).not.toBe(404);
+    expect(res.status()).toBe(400);
+    const data = await res.json();
+    expect(data.error).toMatch(/hubRoot/i);
+  });
+
   test("POST /api/validate accepts minimal skill fields", async ({ request }) => {
     const res = await request.post("/api/validate", {
       data: {

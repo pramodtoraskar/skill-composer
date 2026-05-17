@@ -15,6 +15,7 @@ import os
 import re
 import socket
 import ssl
+import subprocess
 import sysconfig
 import threading
 import urllib.error
@@ -884,6 +885,7 @@ class Handler(BaseHTTPRequestHandler):
             "/api/generate":           self._generate,
             "/api/github":             self._github,
             "/api/upload-skill-index": self._upload_skill_index,
+            "/api/run-evals":          self._run_evals,
         }
         fn = routes.get(self.path)
         if fn:
@@ -1131,6 +1133,62 @@ class Handler(BaseHTTPRequestHandler):
             except Exception:
                 err = str(e)
             self._json(e.code, {"error": err})
+        except Exception as e:
+            self._json(500, {"error": str(e)})
+
+    def _run_evals(self, body: dict):
+        """Run skills-hub cli/run-evals.sh against a local clone path."""
+        hub_root = (body.get("hubRoot") or "").strip()
+        skill_slug = (body.get("skillSlug") or "").strip()
+        if not hub_root:
+            self._json(400, {"error": "hubRoot is required (absolute path to skills-hub clone)"})
+            return
+        if not skill_slug:
+            self._json(400, {"error": "skillSlug is required"})
+            return
+        if not re.match(r"^[a-z0-9]+(?:-[a-z0-9]+)*$", skill_slug):
+            self._json(400, {"error": "Invalid skillSlug"})
+            return
+
+        try:
+            root = Path(hub_root).expanduser().resolve()
+        except Exception as e:
+            self._json(400, {"error": f"Invalid hubRoot: {e}"})
+            return
+
+        home = Path.home().resolve()
+        if root != home and home not in root.parents:
+            self._json(400, {"error": "hubRoot must be under your home directory"})
+            return
+
+        eval_script = root / "cli" / "run-evals.sh"
+        if not eval_script.is_file():
+            self._json(
+                400,
+                {"error": f"Not found: {eval_script} — point hubRoot at your skills-hub clone"},
+            )
+            return
+
+        try:
+            proc = subprocess.run(
+                ["bash", str(eval_script), skill_slug],
+                cwd=str(root),
+                capture_output=True,
+                text=True,
+                timeout=120,
+                env={**os.environ},
+            )
+            self._json(
+                200,
+                {
+                    "exitCode": proc.returncode,
+                    "stdout": proc.stdout or "",
+                    "stderr": proc.stderr or "",
+                    "ok": proc.returncode == 0,
+                },
+            )
+        except subprocess.TimeoutExpired:
+            self._json(408, {"error": "Eval run timed out after 120s"})
         except Exception as e:
             self._json(500, {"error": str(e)})
 

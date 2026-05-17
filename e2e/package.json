@@ -5,7 +5,8 @@
     "test": "playwright test",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
-    "install:browsers": "playwright install chromium"
+    "install:browsers": "playwright install chromium",
+    "record:demo": "playwright test --config=playwright.demo.config.ts"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0"

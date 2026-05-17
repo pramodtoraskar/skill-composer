@@ -15,9 +15,11 @@ __pycache__/
 # E2E
 e2e/node_modules/
 e2e/test-results/
+e2e/demo-output/
 e2e/playwright-report/
 e2e/blob-report/
 e2e/.cache/
+# Keep docs/demo.webm and docs/demo.mp4 for README (generated via scripts/record-demo.sh)
 
 # Keys / credentials (defense in depth)
 *.pem

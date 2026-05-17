@@ -12,9 +12,19 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-3776ab?labelColor=1a1a1a)](https://www.python.org/)
 [![Playwright](https://img.shields.io/badge/e2e-Playwright-2ead33?labelColor=1a1a1a)](e2e/)
 
-[Get started](#get-started) · [7-step flow](#the-seven-step-flow) · [Contribute upstream](#contribute-to-anthropicsskills) · [Specification](https://agentskills.io/specification)
+[Get started](#get-started) · [Demo](#demo) · [7-step flow](#the-seven-step-flow) · [Contribute upstream](#contribute-to-anthropicsskills) · [Specification](https://agentskills.io/specification)
 
 </div>
+
+## Demo
+
+<p align="center">
+  <video src="docs/demo.mp4" controls muted playsinline width="800" poster="docs/demo-poster.png">
+    <a href="docs/demo.mp4">Watch demo (MP4)</a>
+  </video>
+</p>
+
+<p align="center"><sub>~15s · mocked AI + GitHub · <code>bash scripts/record-demo.sh</code> to regenerate</sub></p>
 
 > **Note:** Skill Composer helps you **author** skills that follow the [Agent Skills specification](https://agentskills.io/specification). For Anthropic’s reference implementations and examples, see **[anthropics/skills](https://github.com/anthropics/skills)** on GitHub.
 
@@ -227,6 +237,7 @@ bash scripts/run-e2e.sh
 | Script | Purpose |
 |--------|---------|
 | `serve-app.sh` | Run app |
+| `scripts/record-demo.sh` | Record README demo → `docs/demo.mp4` (needs `ffmpeg`) |
 | `scripts/check-secrets.sh` | Pre-commit token scan |
 | `scripts/run-e2e.sh` | Playwright suite |
 

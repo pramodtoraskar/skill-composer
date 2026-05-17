@@ -19,7 +19,7 @@
 ## Demo
 
 <p align="center">
-  <img src="docs/demo.gif" alt="Skill Composer — setup, create, validate, review, test, push" width="800" />
+  <img src="docs/demo.gif" alt="Skill Composer — setup, create, validate, review, test, push" width="960" />
 </p>
 
 > **Note:** Skill Composer helps you **author** skills that follow the [Agent Skills specification](https://agentskills.io/specification). For Anthropic’s reference implementations and examples, see **[anthropics/skills](https://github.com/anthropics/skills)** on GitHub.

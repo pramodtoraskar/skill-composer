@@ -37,7 +37,8 @@ OUT_GIF="$DOCS/demo.gif"
 if command -v ffmpeg >/dev/null 2>&1; then
   ffmpeg -y -i "$OUT_WEBM" -an -vf "scale=1280:-2" -c:v libx264 -pix_fmt yuv420p -movflags +faststart "$OUT_MP4" 2>/dev/null \
     && echo "Wrote $OUT_MP4 ($(du -h "$OUT_MP4" | cut -f1))"
-  ffmpeg -y -i "$OUT_WEBM" -vf "fps=8,scale=800:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=96[p];[s1][p]paletteuse" -loop 0 "$OUT_GIF" 2>/dev/null \
+  # Sharp GIF: full 1280px capture, 256 colors, no dither (keeps UI text crisp)
+  ffmpeg -y -i "$OUT_WEBM" -vf "fps=12,scale=1280:-2:flags=lanczos,split[s0][s1];[s0]palettegen=stats_mode=diff:max_colors=256[p];[s1][p]paletteuse=dither=none" -loop 0 "$OUT_GIF" 2>/dev/null \
     && echo "Wrote $OUT_GIF ($(du -h "$OUT_GIF" | cut -f1))"
 else
   echo "Tip: install ffmpeg for docs/demo.mp4 and docs/demo.gif (README uses .gif)."

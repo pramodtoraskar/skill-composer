@@ -1,0 +1,2 @@
+# Skills Composer — local server (HTTPS to Anthropic API)
+certifi>=2024.0.0

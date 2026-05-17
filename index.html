@@ -1,0 +1,3889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Skill Composer</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f4f1;--surface:#fff;--surface2:#fafaf8;
+  --border:#e4e2dc;--border2:#ccc9c0;
+  --text:#18180f;--muted:#6b6960;--hint:#9b9890;
+  --accent:#18180f;
+  --green:#15803d;--green-bg:#f0fdf4;--green-bd:#bbf7d0;
+  --red:#b91c1c;--red-bg:#fef2f2;--red-bd:#fecaca;
+  --amber:#92400e;--amber-bg:#fffbeb;--amber-bd:#fde68a;
+  --blue:#1d4ed8;--blue-bg:#eff6ff;--blue-bd:#bfdbfe;
+  --r:8px;--r-lg:12px;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#111110;--surface:#1c1b19;--surface2:#222220;
+  --border:#2e2d2a;--border2:#46453f;
+  --text:#f0ede6;--muted:#9b9890;--hint:#5a5952;
+  --accent:#f0ede6;
+  --green:#4ade80;--green-bg:#052e16;--green-bd:#166534;
+  --red:#f87171;--red-bg:#450a0a;--red-bd:#991b1b;
+  --amber:#fbbf24;--amber-bg:#1c1100;--amber-bd:#92400e;
+  --blue:#60a5fa;--blue-bg:#0f172a;--blue-bd:#1d4ed8;
+}}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  font-size:14px;line-height:1.6;color:var(--text);background:var(--bg);min-height:100vh}
+
+/* ── Layout ── */
+.shell{display:flex;min-height:100vh}
+.sidebar{width:200px;flex-shrink:0;background:var(--surface);
+  border-right:1px solid var(--border);padding:0;
+  position:sticky;top:0;height:100vh;overflow-y:auto;display:flex;flex-direction:column}
+.main{flex:1;padding:2rem 2.5rem;max-width:800px}
+@media(max-width:640px){.sidebar{display:none}.main{padding:1.25rem}}
+
+/* ── Sidebar ── */
+.logo{padding:1.25rem 1.25rem 1rem;border-bottom:1px solid var(--border)}
+.logo-title{font-weight:700;font-size:14px;letter-spacing:-.01em}
+.logo-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.nav{padding:.5rem 0;flex:1}
+.nav-item{display:flex;align-items:center;gap:9px;padding:7px 1.25rem;
+  font-size:13px;color:var(--muted);cursor:pointer;
+  border-right:2px solid transparent;transition:all .12s;user-select:none}
+.nav-item:hover{color:var(--text);background:var(--bg)}
+.nav-item.active{color:var(--text);font-weight:500;border-right-color:var(--text);background:var(--bg)}
+.nav-item.done{color:var(--green)}
+.nav-item.err{color:var(--red)}
+.step-num{width:20px;height:20px;border-radius:50%;border:1.5px solid currentColor;
+  display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0}
+.spec-link{padding:1rem 1.25rem;border-top:1px solid var(--border)}
+.spec-link a{font-size:11px;color:var(--muted);text-decoration:none}
+.spec-link a:hover{color:var(--text)}
+
+/* ── Panels ── */
+.panel{display:none}.panel.active{display:block}
+h1{font-size:20px;font-weight:700;margin-bottom:4px;letter-spacing:-.02em}
+.subtitle{color:var(--muted);font-size:13px;margin-bottom:1.75rem}
+
+/* ── Form elements ── */
+.field{margin-bottom:1.1rem;position:relative}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:1.1rem}
+@media(max-width:560px){.field-row{grid-template-columns:1fr}}
+label{display:block;font-size:12.5px;font-weight:500;margin-bottom:4px}
+.opt{color:var(--hint);font-weight:400}
+input[type=text],input[type=password],textarea,select{
+  width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);
+  font:inherit;font-size:13.5px;background:var(--surface);color:var(--text);
+  outline:none;transition:border-color .12s}
+input:focus,textarea:focus{border-color:var(--border2)}
+input.err-field,textarea.err-field{border-color:var(--red)}
+input.ok-field,textarea.ok-field{border-color:var(--green)}
+textarea{resize:vertical;min-height:72px;line-height:1.55}
+.hint{font-size:11.5px;color:var(--hint);margin-top:3px}
+.char-count{font-size:11px;color:var(--hint);position:absolute;right:0;top:0}
+.char-count.warn{color:var(--amber)}.char-count.over{color:var(--red)}
+
+/* ── Validation badge ── */
+.field-msg{display:flex;align-items:flex-start;gap:5px;margin-top:4px;
+  font-size:11.5px;border-radius:4px;padding:4px 7px}
+.field-msg.error{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)}
+.field-msg.warning{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
+.field-msg.ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+
+/* ── Buttons ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;
+  border-radius:var(--r);font:inherit;font-size:13.5px;cursor:pointer;
+  border:1px solid var(--border);background:var(--surface);color:var(--text);
+  transition:all .12s}
+.btn:hover{border-color:var(--border2);background:var(--surface2)}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+.btn-primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+.btn-primary:hover{opacity:.85;background:var(--text)}
+.btn-sm{padding:4px 10px;font-size:12.5px}
+.btn-danger{background:var(--red-bg);color:var(--red);border-color:var(--red-bd)}
+.actions{display:flex;align-items:center;gap:10px;margin-top:1.5rem;flex-wrap:wrap}
+
+/* ── Status ── */
+.status{font-size:12.5px;color:var(--muted)}
+.status.spin{animation:pulse 1s infinite}
+.status.ok{color:var(--green)}.status.err{color:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+
+/* ── Cards ── */
+.card{background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);padding:1.25rem;margin-bottom:1rem}
+.card-title{font-size:11.5px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--muted);margin-bottom:1rem}
+
+/* ── Validation panel ── */
+.val-section{margin-bottom:1rem}
+.val-title{font-size:12px;font-weight:600;color:var(--muted);
+  text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem}
+.val-item{display:flex;align-items:flex-start;gap:7px;padding:6px 10px;
+  border-radius:var(--r);margin-bottom:4px;font-size:13px}
+.val-item.error{background:var(--red-bg);color:var(--red);border:1px solid var(--red-bd)}
+.val-item.warning{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
+.val-item.pass{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.val-icon{flex-shrink:0;margin-top:1px;font-size:14px}
+.val-summary{display:flex;align-items:center;gap:8px;padding:10px 14px;
+  border-radius:var(--r);font-size:13px;font-weight:500;margin-bottom:1rem;border:1px solid}
+.val-summary.pass{background:var(--green-bg);color:var(--green);border-color:var(--green-bd)}
+.val-summary.fail{background:var(--red-bg);color:var(--red);border-color:var(--red-bd)}
+.val-summary.warn{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bd)}
+
+/* ── Preview ── */
+.preview-wrap{border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+.preview-bar{background:var(--surface2);border-bottom:1px solid var(--border);
+  padding:7px 12px;display:flex;align-items:center;justify-content:space-between}
+.preview-path{font-family:monospace;font-size:11.5px;color:var(--muted)}
+.preview-body{background:var(--surface);padding:1rem 1.25rem;
+  font-family:"SF Mono",Menlo,Consolas,monospace;font-size:12px;line-height:1.7;
+  white-space:pre-wrap;word-break:break-word;
+  max-height:400px;overflow-y:auto;color:var(--muted);
+  outline:none;min-height:200px}
+.preview-body:focus{outline:none}
+
+/* ── Alert boxes ── */
+.alert{border-radius:var(--r);padding:10px 14px;font-size:13px;
+  margin-top:.75rem;display:none}
+.alert.show{display:block}
+.alert-success{background:var(--green-bg);border:1px solid var(--green-bd);color:var(--green)}
+.alert-error{background:var(--red-bg);border:1px solid var(--red-bd);color:var(--red)}
+.alert a{color:inherit;font-weight:500}
+
+/* ── Progress bar ── */
+.progress{height:3px;background:var(--border);border-radius:2px;margin-bottom:1.5rem}
+.progress-fill{height:100%;background:var(--text);border-radius:2px;transition:width .3s}
+
+/* ── Spec badge ── */
+.spec-badge{display:inline-flex;align-items:center;gap:5px;
+  font-size:11px;color:var(--muted);background:var(--surface2);
+  border:1px solid var(--border);border-radius:20px;padding:3px 8px;margin-bottom:1rem}
+/* ── Mode toggle ── */
+.mode-toggle{display:flex;border:1px solid var(--border);border-radius:var(--r);
+  overflow:hidden;margin-bottom:1rem;width:fit-content}
+.mode-btn{padding:7px 16px;font:inherit;font-size:13px;cursor:pointer;
+  border:none;background:var(--surface);color:var(--muted);transition:all .12s}
+.mode-btn.active{background:var(--text);color:var(--bg);font-weight:500}
+.alert-warn{background:var(--amber-bg);border:1px solid var(--amber-bd);color:var(--amber)}
+/* ── Push config strip ── */
+.push-config-strip{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);
+  padding:8px 12px;margin-bottom:1rem;font-size:12px;color:var(--muted)}
+.push-config-item code{color:var(--text);font-size:11.5px}
+.push-config-sep{color:var(--border2)}
+/* ── Test panel caveat ── */
+.test-caveat{border:1px solid var(--border);border-radius:var(--r);
+  padding:12px 14px;margin-bottom:1.25rem;background:var(--surface2)}
+.test-caveat-row{display:flex;align-items:flex-start;gap:10px;font-size:13px}
+.test-caveat-tag{flex-shrink:0;font-size:11px;font-weight:600;padding:2px 8px;
+  border-radius:20px;white-space:nowrap;margin-top:2px}
+.test-caveat-tag.ok{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.test-caveat-tag.warn{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
+.test-caveat-text{color:var(--muted);line-height:1.5}
+.test-section-title{font-size:12px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--muted);margin-bottom:.75rem}
+/* ── Local install ── */
+.local-install-box{border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:1.25rem;background:var(--surface)}
+.local-install-steps{display:flex;flex-direction:column;gap:1rem}
+.local-step{display:flex;gap:12px;align-items:flex-start}
+.local-step-num{width:24px;height:24px;border-radius:50%;background:var(--text);
+  color:var(--bg);font-size:11px;font-weight:700;display:flex;align-items:center;
+  justify-content:center;flex-shrink:0;margin-top:1px}
+.local-step-title{font-size:13px;font-weight:600;margin-bottom:5px}
+.local-step-body{font-size:13px}
+.install-branch-info{background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--r);padding:6px 10px;font-size:12px}
+/* ── Test panel ── */
+.test-layout{display:grid;grid-template-columns:1fr 280px;gap:1rem;
+  min-height:400px}
+@media(max-width:800px){.test-layout{grid-template-columns:1fr}}
+.test-main{display:flex;flex-direction:column}
+.test-sidebar{border:1px solid var(--border);border-radius:var(--r-lg);
+  overflow:hidden;display:flex;flex-direction:column}
+.test-context-body{flex:1;overflow-y:auto;background:var(--surface)}
+.test-context-pre{font-family:monospace;font-size:11.5px;line-height:1.7;
+  white-space:pre-wrap;word-break:break-word;color:var(--muted);
+  padding:.75rem 1rem}
+.test-response-bar{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 12px;background:var(--surface2);border:1px solid var(--border);
+  border-bottom:none;border-radius:var(--r) var(--r) 0 0}
+.test-response-body{border:1px solid var(--border);border-radius:0 0 var(--r) var(--r);
+  padding:1rem;font-size:13.5px;line-height:1.7;white-space:pre-wrap;
+  word-break:break-word;background:var(--surface);min-height:80px;
+  max-height:360px;overflow-y:auto}
+.test-history-item{border:1px solid var(--border);border-radius:var(--r);
+  margin-top:.75rem;overflow:hidden}
+.test-history-prompt{padding:8px 12px;background:var(--surface2);
+  font-size:12.5px;color:var(--muted);border-bottom:1px solid var(--border)}
+.test-history-response{padding:10px 12px;font-size:13px;line-height:1.6;
+  white-space:pre-wrap;word-break:break-word;max-height:200px;overflow-y:auto}
+/* ── Create review layout ── */
+.create-review-layout{display:grid;grid-template-columns:1fr 260px;gap:1rem;
+  height:calc(100vh - 280px);min-height:480px}
+@media(max-width:800px){.create-review-layout{grid-template-columns:1fr;height:auto}}
+/* ── Skill tree ── */
+.skill-tree-body{flex:1;overflow-y:auto;padding:10px 12px;
+  background:var(--surface);font-family:monospace;font-size:12.5px;line-height:1.9}
+.tree-empty{color:var(--hint);font-size:12px;font-family:var(--font-sans,sans-serif);
+  padding:1rem;text-align:center}
+.tree-folder{color:var(--muted);user-select:none}
+.tree-folder-name{color:var(--text);font-weight:600}
+.tree-file{display:flex;align-items:center;gap:6px;padding:1px 0;
+  padding-left:16px;color:var(--muted)}
+.tree-file.required{color:var(--green)}
+.tree-file.new{color:var(--blue)}
+.tree-file-icon{font-size:11px;flex-shrink:0}
+.tree-file-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-badge{font-size:9.5px;padding:1px 5px;border-radius:20px;flex-shrink:0}
+.tree-badge.req{background:var(--green-bg);color:var(--green);border:1px solid var(--green-bd)}
+.tree-badge.new{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)}
+.tree-line{color:var(--border2)}
+/* ── Existing files list ── */
+.existing-file-row{display:flex;align-items:center;justify-content:space-between;
+  padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);
+  margin-bottom:6px;background:var(--surface2);font-size:13px}
+.existing-file-info{display:flex;align-items:center;gap:8px}
+.existing-file-path{font-family:monospace;font-size:12px;color:var(--muted)}
+.existing-file-badge{font-size:10.5px;padding:1px 6px;border-radius:20px;
+  background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd)}
+.existing-file-badge.deleted{background:var(--red-bg);color:var(--red);
+  border-color:var(--red-bd);text-decoration:line-through}
+.existing-file-actions{display:flex;gap:6px}
+/* ── Section divider ── */
+.section-divider{font-size:12px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--muted);padding-bottom:8px;
+  border-bottom:1px solid var(--border);margin-bottom:.75rem}
+/* ── File upload rows ── */
+.file-row{display:grid;grid-template-columns:1fr 160px 32px;gap:8px;
+  align-items:center;margin-bottom:8px}
+.file-row select{padding:6px 8px;border:1px solid var(--border);border-radius:var(--r);
+  font:inherit;font-size:13px;background:var(--surface);color:var(--text)}
+.file-pick{display:flex;align-items:center;gap:8px}
+.file-pick input[type=file]{display:none}
+.file-pick-btn{padding:5px 10px;border:1px solid var(--border);border-radius:var(--r);
+  font:inherit;font-size:12.5px;cursor:pointer;background:var(--surface);
+  color:var(--text);white-space:nowrap}
+.file-pick-btn:hover{background:var(--surface2)}
+.file-name{font-size:12px;color:var(--muted);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;max-width:180px}
+.row-del{width:28px;height:28px;border:none;background:none;cursor:pointer;
+  color:var(--hint);font-size:16px;display:flex;align-items:center;
+  justify-content:center;border-radius:var(--r);flex-shrink:0}
+.row-del:hover{background:var(--red-bg);color:var(--red)}
+/* ── Eval rows ── */
+.eval-card{border:1px solid var(--border);border-radius:var(--r);
+  padding:12px;margin-bottom:10px;background:var(--surface)}
+.eval-card-title{font-size:12px;font-weight:600;color:var(--muted);
+  margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.eval-checks{display:flex;flex-direction:column;gap:5px;margin-top:6px}
+.eval-check-row{display:flex;align-items:center;gap:6px;font-size:13px}
+.eval-check-row input[type=text]{flex:1}
+/* ── Split pane (PR review mode) ── */
+.split-layout{display:grid;grid-template-columns:1fr 1fr;gap:1rem;
+  height:calc(100vh - 280px);min-height:480px}
+@media(max-width:800px){.split-layout{grid-template-columns:1fr;height:auto}}
+.split-left,.split-right{display:flex;flex-direction:column;
+  border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+.split-pane-title{display:flex;align-items:center;justify-content:space-between;
+  padding:8px 12px;background:var(--surface2);border-bottom:1px solid var(--border);
+  font-size:12.5px;font-weight:600;color:var(--muted);flex-shrink:0}
+.split-comments-body{flex:1;overflow-y:auto;background:var(--surface)}
+.split-editor-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.split-path{font-family:monospace;font-size:11px;color:var(--hint);
+  padding:5px 12px;background:var(--surface2);border-bottom:1px solid var(--border);
+  flex-shrink:0}
+.split-editor{flex:1;overflow-y:auto;padding:1rem 1.25rem;
+  font-family:"SF Mono",Menlo,Consolas,monospace;font-size:12px;line-height:1.7;
+  white-space:pre-wrap;word-break:break-word;color:var(--text);
+  background:var(--surface);outline:none;cursor:text}
+.split-editor:focus{outline:none}
+/* ── PR banner & review comments ── */
+.pr-banner{background:var(--blue-bg);border:1px solid var(--blue-bd);
+  border-radius:var(--r);padding:10px 14px;margin-bottom:1rem}
+.pr-banner-top{display:flex;align-items:center;justify-content:space-between;
+  font-size:13px;font-weight:500;color:var(--blue)}
+.comments-header{display:flex;align-items:center;gap:8px;
+  padding:8px 12px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--r) var(--r) 0 0;cursor:pointer;font-size:13px;font-weight:500;
+  user-select:none}
+.comments-header:hover{background:var(--bg)}
+.comment-badge{font-size:11px;background:var(--amber-bg);color:var(--amber);
+  border:1px solid var(--amber-bd);border-radius:20px;padding:1px 7px}
+#comments-body{border:1px solid var(--border);border-top:none;
+  border-radius:0 0 var(--r) var(--r);margin-bottom:1rem;
+  max-height:320px;overflow-y:auto}
+.comment-item{padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px}
+.comment-item:last-child{border-bottom:none}
+.comment-meta{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.comment-author{font-weight:600;font-size:12.5px}
+.comment-time{font-size:11.5px;color:var(--hint)}
+.comment-type{font-size:10.5px;padding:1px 6px;border-radius:20px;
+  background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
+.comment-type.review{background:var(--red-bg);color:var(--red);border-color:var(--red-bd)}
+.comment-body{color:var(--text);line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.comment-file{font-family:monospace;font-size:11px;color:var(--muted);
+  background:var(--surface2);border:1px solid var(--border);border-radius:4px;
+  padding:2px 6px;margin-bottom:4px;display:inline-block}
+.no-comments{padding:16px;text-align:center;color:var(--muted);font-size:13px}
+.flow-diagram{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:.25rem}
+.flow-box{flex:1;min-width:130px;border:1px solid var(--border);border-radius:var(--r);
+  padding:10px 12px;background:var(--surface2)}
+.flow-box.contrib{border-color:var(--blue-bd);background:var(--blue-bg)}
+.flow-box.upstream{border-color:var(--green-bd);background:var(--green-bg)}
+.flow-box.install{border-color:var(--border)}
+.flow-label{font-size:10.5px;font-weight:600;text-transform:uppercase;
+  letter-spacing:.05em;color:var(--muted);margin-bottom:4px}
+.flow-repo{font-family:monospace;font-size:12px;font-weight:600;
+  color:var(--text);margin-bottom:4px;word-break:break-all}
+.flow-desc{font-size:11.5px;color:var(--muted)}
+.flow-arrow{font-size:12px;color:var(--hint);flex-shrink:0;white-space:nowrap}
+/* ── Sidebar status ── */
+.sidebar-status{background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--r);padding:7px 9px;margin-bottom:8px}
+.sidebar-status-line{font-size:11px;color:var(--muted);padding:1px 0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sidebar-status-edit{font-size:11px;color:var(--hint);text-decoration:none;
+  display:inline-block;margin-top:4px}
+.sidebar-status-edit:hover{color:var(--text)}
+/* ── Browse button ── */
+.browse-btn{width:100%;text-align:left;padding:8px 10px;margin-bottom:8px;
+  border:1px solid var(--border);border-radius:var(--r);background:var(--surface2);
+  color:var(--text);font:inherit;font-size:13px;cursor:pointer;
+  display:flex;align-items:center;gap:6px;transition:all .12s}
+.browse-btn:hover{background:var(--bg);border-color:var(--border2)}
+.browse-count{margin-left:auto;font-size:10.5px;background:var(--blue-bg);
+  color:var(--blue);border:1px solid var(--blue-bd);border-radius:20px;
+  padding:1px 6px;font-weight:600}
+/* ── Skill browser overlay ── */
+.browser-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);
+  z-index:1000;display:flex;align-items:flex-start;justify-content:center;
+  padding:2rem 1rem;overflow-y:auto}
+.browser-modal{background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--r-lg);width:100%;max-width:1200px;
+  min-height:600px;display:flex;flex-direction:column;position:relative}
+.browser-header{display:flex;align-items:flex-start;justify-content:space-between;
+  padding:1.25rem 1.5rem 1rem;border-bottom:1px solid var(--border)}
+.browser-title{font-size:18px;font-weight:700;letter-spacing:-.02em;margin-bottom:3px}
+.browser-subtitle{font-size:12.5px;color:var(--muted)}
+.browser-total-badge{font-size:12px;font-weight:400;color:var(--muted);margin-left:8px}
+.browser-close{font-size:18px;background:none;border:none;cursor:pointer;
+  color:var(--muted);padding:4px 8px;border-radius:var(--r);line-height:1}
+.browser-close:hover{background:var(--bg);color:var(--text)}
+.browser-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:.75rem 1.5rem;border-bottom:1px solid var(--border);background:var(--surface2)}
+.browser-search{flex:1;min-width:200px;padding:7px 11px;border:1px solid var(--border);
+  border-radius:var(--r);font:inherit;font-size:13.5px;background:var(--surface);color:var(--text)}
+.browser-search:focus{outline:none;border-color:var(--border2)}
+.browser-cat-filter{padding:7px 10px;border:1px solid var(--border);border-radius:var(--r);
+  font:inherit;font-size:13px;background:var(--surface);color:var(--text);min-width:160px}
+.browser-match{font-size:12px;color:var(--muted);white-space:nowrap}
+.browser-grid{flex:1;padding:1.25rem 1.5rem;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));
+  gap:12px;align-content:start;overflow-y:auto;max-height:calc(100vh - 240px)}
+.browser-loading{grid-column:1/-1;padding:3rem;text-align:center;
+  color:var(--muted);font-size:13px}
+.browser-empty{grid-column:1/-1;padding:3rem;text-align:center;
+  color:var(--hint);font-size:13px}
+/* ── Skill card ── */
+.skill-card{border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:14px;background:var(--surface);display:flex;flex-direction:column;
+  gap:8px;transition:border-color .12s;position:relative}
+.skill-card:hover{border-color:var(--border2)}
+.skill-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.skill-card-name{font-size:13px;font-weight:700;color:var(--text);
+  word-break:break-word;flex:1;line-height:1.3}
+.skill-cat-badge{font-size:10px;padding:2px 7px;border-radius:20px;flex-shrink:0;
+  background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-bd);
+  white-space:nowrap;font-weight:500}
+.skill-desc{font-size:12px;color:var(--muted);line-height:1.55;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.skill-triggers{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+.skill-trigger-tag{font-size:10.5px;padding:1px 6px;border-radius:4px;
+  background:var(--surface2);border:1px solid var(--border);color:var(--hint)}
+.skill-env-row{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.skill-env-tag{font-size:10px;padding:1px 6px;border-radius:4px;
+  background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-bd)}
+.skill-actions{display:flex;gap:6px;margin-top:4px}
+.skill-path{font-size:10.5px;color:var(--hint);font-family:monospace;margin-top:2px}
+/* ── Duplicate warning ── */
+.duplicate-warn{background:var(--amber-bg);border:1px solid var(--amber-bd);
+  border-radius:var(--r);padding:8px 12px;font-size:12.5px;color:var(--amber);
+  margin-top:5px;display:none}
+/* ── Code block ── */
+.code-block{background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--r);padding:9px 12px;font-family:monospace;
+  font-size:12.5px;color:var(--text);line-height:1.7;word-break:break-all}
+
+/* ── IDE (Review panel) — two-pane: Monaco + AI chat ── */
+.ide-shell{display:flex;flex-direction:column;height:calc(100vh - 190px);
+  min-height:500px;margin:-1.5rem -2.5rem 0;border-top:1px solid var(--border)}
+.ide-two-pane{display:grid;grid-template-columns:1fr 270px;flex:1;overflow:hidden}
+@media(max-width:860px){.ide-two-pane{grid-template-columns:1fr}}
+.ide-editor-col{display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.ide-chat-col{border-left:1px solid var(--border);display:flex;
+  flex-direction:column;overflow:hidden;background:var(--surface2)}
+.ide-topbar{display:flex;align-items:center;justify-content:space-between;
+  padding:5px 10px;background:var(--surface2);border-bottom:1px solid var(--border);
+  flex-shrink:0;min-height:34px}
+#monaco-container{flex:1;overflow:hidden;min-height:0}
+
+.ide-attachment-bar{display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--surface2);min-height:36px;align-items:center}
+.ide-attachment-bar:empty{display:none}
+.ide-attachment-chip{font-size:11.5px;padding:4px 10px;border-radius:999px;border:1px solid var(--border);
+  background:var(--surface);cursor:pointer;color:var(--muted);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ide-attachment-chip:hover,.ide-attachment-chip.active{color:var(--text);border-color:var(--border2);font-weight:500}
+.ide-support-editor{border-top:1px solid var(--border);display:none;flex-direction:column;max-height:220px}
+.ide-support-editor.open{display:flex}
+.ide-support-editor textarea{flex:1;min-height:160px;font-family:monospace;font-size:12px;border:none;border-radius:0;resize:vertical}
+
+.ide-statusbar{display:flex;align-items:center;justify-content:space-between;
+  padding:4px 10px;background:var(--surface2);border-top:1px solid var(--border);
+  font-size:12px;color:var(--muted);flex-shrink:0}
+.ide-status-ok{color:var(--green)}.ide-status-warn{color:var(--amber)}.ide-status-err{color:var(--red)}
+.ide-fallback{flex:1;resize:none;font-family:monospace;font-size:13px;line-height:1.7;
+  border:none;background:var(--surface);color:var(--text);padding:12px;outline:none}
+.ide-chat-messages{flex:1;overflow-y:auto;padding:8px;font-size:12.5px}
+.ide-msg-user{font-weight:600;color:var(--text);margin-bottom:4px;
+  padding:5px 8px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r)}
+.ide-msg-ai{color:var(--muted);line-height:1.6;margin-bottom:10px;
+  white-space:pre-wrap;word-break:break-word}
+.ide-msg-ai code{font-family:monospace;font-size:11.5px;background:var(--surface);
+  border:1px solid var(--border);border-radius:3px;padding:0 3px}
+.ide-chat-bottom{border-top:1px solid var(--border);padding:8px;flex-shrink:0}
+.ide-chips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+.ide-chip{font-size:11px;padding:2px 7px;border-radius:20px;cursor:pointer;
+  border:1px solid var(--border);background:var(--surface);color:var(--muted)}
+.ide-chip:hover{color:var(--text);border-color:var(--border2)}
+.ide-actions{display:flex;align-items:center;gap:10px;padding:10px 2.5rem}
+</style>
+  <!-- Monaco Editor (VS Code engine) — loaded from CDN -->
+  <link rel="stylesheet" data-name="vs/editor/editor.main"
+    href="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/editor/editor.main.css">
+  <script src="https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/loader.js"></script>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="logo">
+      <div class="logo-title">Skill Composer</div>
+      <div class="logo-sub">agentskills.io standard</div>
+    </div>
+    <div class="nav">
+      <div class="nav-item active" id="nav-0" onclick="goTo(0)">
+        <span class="step-num" id="sn-0">1</span> Setup
+      </div>
+      <div class="nav-item" id="nav-1" onclick="goTo(1)">
+        <span class="step-num" id="sn-1">2</span> <span id="nav-1-label">Create / Load</span>
+      </div>
+      <div class="nav-item" id="nav-2" onclick="goTo(2)">
+        <span class="step-num" id="sn-2">3</span> Validate
+      </div>
+      <div class="nav-item" id="nav-3" onclick="goTo(3)">
+        <span class="step-num" id="sn-3">4</span> Review
+      </div>
+      <div class="nav-item" id="nav-4" onclick="goTo(4)">
+        <span class="step-num" id="sn-4">5</span> Test
+      </div>
+      <div class="nav-item" id="nav-5" onclick="goTo(5)">
+        <span class="step-num" id="sn-5">6</span> Push to repo
+      </div>
+      <div class="nav-item" id="nav-6" onclick="goTo(6)">
+        <span class="step-num" id="sn-6">7</span> Install
+      </div>
+    </div>
+    <div class="spec-link">
+      <!-- Config status — shows what's connected -->
+      <div id="sidebar-status" style="display:none" class="sidebar-status">
+        <div id="sidebar-status-body"></div>
+        <a href="#" onclick="goTo(0);return false" class="sidebar-status-edit">Edit setup</a>
+      </div>
+      <button class="browse-btn" onclick="openBrowser()" id="browse-btn">
+        🗂 Browse skills
+        <span id="browse-count" class="browse-count"></span>
+      </button>
+      <a href="https://agentskills.io/specification" target="_blank" rel="noopener">
+        📄 agentskills.io spec ↗
+      </a>
+      <a href="#" onclick="if(confirm('Clear saved config?'))clearConfig();return false"
+         style="margin-left:8px;font-size:11px;color:var(--hint)">🗑 Reset</a>
+    </div>
+  </nav>
+
+  <!-- ── Skill Browser Overlay ────────────────────────────────── -->
+  <div id="skill-browser-overlay" class="browser-overlay" style="display:none">
+    <div class="browser-modal">
+
+      <div class="browser-header">
+        <div>
+          <div class="browser-title">
+            🗂 Skills Browser
+            <span id="browser-total" class="browser-total-badge"></span>
+          </div>
+          <div class="browser-subtitle" id="browser-subtitle">
+            Loading from upstream…
+          </div>
+        </div>
+        <button class="browser-close" onclick="closeBrowser()">✕</button>
+      </div>
+
+      <div class="browser-toolbar">
+        <input type="text" id="browser-search"
+          class="browser-search"
+          placeholder="Search by name, description or trigger phrase…"
+          oninput="filterSkills()">
+        <select id="browser-cat" class="browser-cat-filter" onchange="filterSkills()">
+          <option value="">All categories</option>
+        </select>
+        <select id="browser-env" class="browser-cat-filter" onchange="filterSkills()" style="min-width:140px">
+          <option value="">Any environment</option>
+        </select>
+        <span id="browser-match-count" class="browser-match"></span>
+      </div>
+
+      <div id="browser-grid" class="browser-grid">
+        <div class="browser-loading">
+          <span id="browser-loading-msg">Fetching SKILL_INDEX.json from upstream…</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <main class="main">
+
+    <!-- ── Step 0: Setup ──────────────────────────────────────── -->
+    <section class="panel active" id="panel-0">
+      <h1>Setup</h1>
+      <p class="subtitle">Only needed once. Browse and generate skills work without GitHub — token only needed to push PRs.</p>
+
+      <div class="card">
+        <div class="card-title">GitHub <span class="opt" style="text-transform:none;font-weight:400">— required only to push PRs</span></div>
+        <div class="field">
+          <label>Personal access token <span class="opt">(optional — required at push)</span></label>
+          <input type="password" id="gh-token" placeholder="ghp_xxxxxxxxxxxx" autocomplete="off">
+          <p class="hint">Needs <code>repo</code> scope. <a href="https://github.com/settings/tokens/new?scopes=repo" target="_blank">Create one ↗</a> — skip for now if you only want to browse or generate.</p>
+        </div>
+
+        <div class="field">
+          <label>Upstream repo <span class="opt">(owner/repo — optional)</span></label>
+          <input type="text" id="gh-upstream" placeholder="anthropics/skills">
+          <p class="hint">Source of truth. App finds or creates your fork automatically when you push.</p>
+        </div>
+
+        <div class="field-row">
+          <div class="field" style="margin:0">
+            <label>Base branch</label>
+            <input type="text" id="gh-branch" value="main">
+          </div>
+          <div class="field" style="margin:0">
+            <label>Skills path prefix</label>
+            <input type="text" id="gh-path" placeholder="skills/" oninput="onSetupPathChange()">
+            <p class="hint" style="margin-top:6px">e.g. skills/jira/ for category subfolders.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Anthropic API <span class="opt" style="text-transform:none;font-weight:400">— required to generate skills</span></div>
+        <div class="field" style="margin:0">
+          <label>API key <span id="env-badge" class="opt"></span></label>
+          <input type="password" id="api-key" placeholder="sk-ant-..." autocomplete="off">
+          <p class="hint">Used to generate SKILL.md. Calls go through localhost only. Set <code>ANTHROPIC_API_KEY</code> in <code>.env</code> to skip this field.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Skill index</div>
+        <div class="field" style="margin:0">
+          <label>SKILL_INDEX.json <span class="opt">(optional — enables skill browser &amp; duplicate detection)</span></label>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:4px">
+            <button class="file-pick-btn" onclick="el('skill-index-upload').click()">
+              Choose file
+            </button>
+            <span id="skill-index-filename" style="font-size:12.5px;color:var(--muted)">
+              No file chosen
+            </span>
+            <input type="file" id="skill-index-upload" accept=".json"
+              onchange="onSkillIndexChosen()" style="display:none">
+          </div>
+          <div id="skill-index-status" style="margin-top:6px"></div>
+          <p class="hint" style="margin-top:6px">
+            Drop the latest <code>SKILL_INDEX.json</code> from your skills hub.
+            Saved to <code>app/data/</code> — re-upload anytime to refresh.
+          </p>
+        </div>
+      </div>
+
+      <!-- Fork status — shown after token+upstream entered -->
+      <div id="fork-status-box" style="display:none" class="card">
+        <div class="card-title">Your fork</div>
+        <div id="fork-status-body"></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="setup-btn" onclick="setupAndFork()">Continue →</button>
+        <span class="status" id="s-setup"></span>
+      </div>
+    </section>
+
+    <!-- ── Step 1: Create / Load ──────────────────────────────── -->
+    <section class="panel" id="panel-1">
+
+      <!-- Tab toggle -->
+      <div class="mode-toggle" style="margin-bottom:1.5rem">
+        <button class="mode-btn active" id="tab-create" onclick="switchTab('create')">✦ Create new skill</button>
+        <button class="mode-btn"        id="tab-load"   onclick="switchTab('load')">↓ Load existing</button>
+      </div>
+
+      <!-- ── CREATE pane ── -->
+      <div id="pane-create">
+        <h1>Describe your skill</h1>
+        <p class="subtitle">Plain English. The more context, the better the output.</p>
+        <div class="spec-badge">📋 Validated against agentskills.io spec</div>
+
+        <div class="field">
+          <label>Skill name <span class="char-count" id="cc-name"></span></label>
+          <input type="text" id="f-name" placeholder="release-slack-comms"
+            oninput="onNameInput()" onblur="liveValidate()">
+          <div id="msg-name"></div>
+          <div id="duplicate-warn" class="duplicate-warn">
+            ⚠ A skill with this name already exists in the upstream repo.
+            <a href="#" id="duplicate-edit-link" onclick="loadExistingFromDuplicate(event)">
+              Load it for editing instead →
+            </a>
+          </div>
+          <p class="hint">Lowercase, hyphens only. Max 64 chars. Must match the directory name (spec rule).</p>
+        </div>
+
+        <div class="field">
+          <label>Category <span class="opt">(skills-hub folder group)</span></label>
+          <select id="f-skill-category" onchange="onSkillCategoryChange()">
+            <option value="">Standalone — skills/&lt;skill-name&gt;/</option>
+          </select>
+          <p class="hint" id="hint-skill-category">Hub layout, e.g. skills/console/console-architecture/. Sets the path prefix in Setup.</p>
+        </div>
+
+        <div class="field">
+          <label>Skill type <span class="opt">(shapes the generated structure)</span></label>
+          <select id="f-skill-kind">
+            <option value="generic">Generic — standard workflow skill</option>
+            <option value="architecture">Architecture / Product — product or repo deep-dive</option>
+            <option value="update">Update existing — improve an existing SKILL.md</option>
+          </select>
+          <p class="hint">
+            <strong>Generic</strong>: procedure + checklist + refs.
+            <strong>Architecture</strong>: mental model + path table + stack.
+            <strong>Update</strong>: preserves existing content, only improves it.
+          </p>
+        </div>
+
+        <div class="field">
+          <label>What does this skill do? <span class="char-count" id="cc-desc"></span></label>
+          <textarea id="f-desc" style="min-height:90px"
+            placeholder="Drafts short, upbeat Slack announcements for product releases and changes — what shipped, why it matters, and the improvement for users."
+            oninput="onDescInput()" onblur="liveValidate()"></textarea>
+          <div id="msg-desc"></div>
+          <p class="hint">Also becomes the routing trigger. Max 1024 chars. Include trigger keywords.</p>
+        </div>
+
+        <div class="field">
+          <label>When should Claude use this? <span class="opt">(trigger phrases)</span></label>
+          <textarea id="f-when"
+            placeholder="Use when writing release comms, feature launches, changelog posts, or when the user mentions Slack announcements, rollout notes, or 'what's new'."></textarea>
+        </div>
+
+        <div class="field">
+          <label>Example prompts that trigger this <span class="opt">(one per line)</span></label>
+          <textarea id="f-examples"
+            placeholder="Write a Slack post for our new dashboard feature&#10;Draft release notes for the API update&#10;We just shipped dark mode — write the rollout announcement"></textarea>
+        </div>
+
+        <div class="field">
+          <label>Steps or rules the agent must follow <span class="opt">(optional)</span></label>
+          <textarea id="f-steps"
+            placeholder="1. Ask what shipped and why it matters&#10;2. Keep it under 150 words&#10;3. Use one emoji max&#10;4. End with a link placeholder"></textarea>
+        </div>
+
+        <div class="field">
+          <label>Gotchas — non-obvious pitfalls <span class="opt">(optional)</span></label>
+          <textarea id="f-gotchas"
+            placeholder="e.g. Never announce features in #general before #product-updates"></textarea>
+          <p class="hint">These become the most valuable part of a skill.</p>
+        </div>
+
+        <div class="field">
+          <label>Output format or template <span class="opt">(optional)</span></label>
+          <textarea id="f-output"
+            placeholder="e.g. Subject: [emoji] [Feature name] is here!&#10;Body: 2-3 sentences max."></textarea>
+        </div>
+
+        <div class="field-row">
+          <div class="field" style="margin:0">
+            <label>Compatibility <span class="opt">(optional, max 500)</span></label>
+            <input type="text" id="f-compat" placeholder="e.g. Claude Code or similar"
+              oninput="onCompatInput()" onblur="liveValidate()">
+            <div id="msg-compat"></div>
+          </div>
+          <div class="field" style="margin:0">
+            <label>License <span class="opt">(optional)</span></label>
+            <input type="text" id="f-license" placeholder="e.g. MIT, Proprietary">
+          </div>
+        </div>
+
+        <!-- ── Supporting files ── -->
+        <div style="margin-top:1.5rem">
+          <div class="section-divider">Supporting files <span class="opt">— optional</span></div>
+
+          <div id="file-list"></div>
+
+          <button class="btn btn-sm" onclick="addFileRow('create')" style="margin-top:.5rem">
+            + Add file
+          </button>
+          <p class="hint" style="margin-top:6px">
+            Allowed: <code>.md .json .csv .txt .xlsx .gitignore</code><br>
+            <code>references/</code> Reference docs &nbsp;·&nbsp;
+            <code>procedures/</code> Step-by-step subflows &nbsp;·&nbsp;
+            <code>agents/</code> Agent prompts &nbsp;·&nbsp;
+            <code>evals/</code> evals.json, README.md, scoresheets &nbsp;·&nbsp;
+            <code>evals/fixtures/</code> Fixtures &nbsp;·&nbsp;
+            <code>assets/</code> Templates, xlsx, etc.
+          </p>
+        </div>
+
+        <!-- ── Evals builder ── -->
+        <div style="margin-top:1.5rem">
+          <div class="section-divider">Skill evals <span class="opt">— optional but recommended</span></div>
+          <p class="hint" style="margin-bottom:.75rem">
+            Define test cases: what prompt should trigger this skill, and what good output looks like.
+            These get committed as <code>evals/evals.json</code> and <code>evals/README.md</code>.
+          </p>
+
+          <div id="eval-list"></div>
+
+          <button class="btn btn-sm" onclick="addEvalRow('create')">
+            + Add test case
+          </button>
+        </div>
+
+        <div class="actions" style="margin-top:1.5rem">
+          <button class="btn btn-primary" id="gen-btn" onclick="generate()">Generate SKILL.md →</button>
+          <span class="status" id="s-gen"></span>
+        </div>
+      </div>
+
+      <!-- ── LOAD pane ── -->
+      <div id="pane-load" style="display:none">
+        <h1>Load existing skill</h1>
+        <p class="subtitle">Fetch a SKILL.md from your repo into the editor.</p>
+
+        <!-- Load mode tabs -->
+        <div class="mode-toggle" style="margin-bottom:1.25rem">
+          <button class="mode-btn active" id="load-by-pr"   onclick="setLoadBy('pr')">By PR number</button>
+          <button class="mode-btn"        id="load-by-name" onclick="setLoadBy('name')">By skill name</button>
+        </div>
+
+        <!-- PR number -->
+        <div id="load-pr-field">
+          <div class="field">
+            <label>Pull request number</label>
+            <input type="text" id="l-pr" placeholder="e.g. 1"
+              style="max-width:180px">
+            <p class="hint">Fetches the branch and current SKILL.md from that PR. Push will update the same branch.</p>
+          </div>
+        </div>
+
+        <!-- Skill name -->
+        <div id="load-name-field" style="display:none">
+          <div class="field">
+            <label>Skill name (folder name in repo)</label>
+            <input type="text" id="l-name" placeholder="e.g. equivalence-partitioning">
+            <p class="hint">Loads SKILL.md from <code>skills/&lt;name&gt;/SKILL.md</code> on the base branch. Push will create a new PR.</p>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" id="load-btn" onclick="loadSkill()">Fetch SKILL.md →</button>
+          <span class="status" id="s-load"></span>
+        </div>
+
+        <div class="alert alert-error" id="load-error"></div>
+      </div>
+
+    </section>
+
+    <!-- ── Step 2: Validate ───────────────────────────────────── -->
+    <section class="panel" id="panel-2">
+      <h1>Validation</h1>
+      <p class="subtitle">Checked against the agentskills.io specification.</p>
+
+      <div id="val-summary" class="val-summary pass">✓ All checks passed</div>
+      <div id="val-results"></div>
+
+      <div class="actions">
+        <button class="btn" onclick="goTo(1)">← Edit details</button>
+        <button class="btn btn-primary" id="to-review-btn" onclick="goTo(3)">Review SKILL.md →</button>
+      </div>
+    </section>
+
+    <!-- ── Step 3: Review — IDE ──────────────────────────────── -->
+    <section class="panel" id="panel-3">
+
+      <!-- PR banner (shown when loaded from PR) -->
+      <div id="review-header-pr" style="display:none;padding:0 2.5rem .75rem">
+        <div class="pr-banner">
+          <div class="pr-banner-top">
+            <span id="pr-banner-title">📋 Fixing PR #—</span>
+            <a id="pr-banner-link" href="#" target="_blank" rel="noopener"
+               style="font-size:12px;color:inherit;opacity:.8">Open on GitHub ↗</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Two-pane: Monaco editor + AI chat -->
+      <div class="ide-shell">
+        <div class="ide-two-pane">
+
+          <!-- Editor column -->
+          <div class="ide-editor-col">
+            <div id="ide-attachment-bar" class="ide-attachment-bar" aria-label="Supporting files"></div>
+            <div class="ide-topbar">
+              <span id="preview-path" style="font-family:monospace;font-size:12px;color:var(--muted)">skills/…/SKILL.md</span>
+              <div style="display:flex;gap:6px">
+                <button class="btn btn-sm" id="ide-ai-edit-btn" onclick="aiEditSelection()" style="display:none">✨ AI edit</button>
+                <button class="btn btn-sm" onclick="copySkill()">Copy</button>
+              </div>
+            </div>
+            <div id="monaco-container"></div>
+            <div id="ide-support-editor" class="ide-support-editor" aria-hidden="true">
+              <div class="ide-topbar" style="font-size:11px">
+                <span id="ide-support-path" style="font-family:monospace;color:var(--muted)">references/…</span>
+                <button type="button" class="btn btn-sm" onclick="closeSupportEditor()">Back to SKILL.md</button>
+              </div>
+              <textarea id="ide-support-preview" spellcheck="false" aria-label="Supporting file editor"></textarea>
+            </div>
+            <!-- Fallback textarea if Monaco unavailable — also used as the canonical data store -->
+            <textarea id="skill-preview" class="ide-fallback" spellcheck="false"
+              style="display:none" aria-label="SKILL.md editor"></textarea>
+            <div class="ide-statusbar">
+              <span id="ide-status-text">Ready</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span id="ide-val-summary"></span>
+                <button class="btn btn-sm" onclick="ideRevalidate()">Validate</button>
+                <button class="btn btn-sm" onclick="ideToggleChat()">💬 AI</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI chat column -->
+          <div class="ide-chat-col" id="ide-chat-col">
+            <div class="ide-topbar" style="font-size:12px;font-weight:600;color:var(--muted)">
+              ✨ AI Assistant
+              <button onclick="ideToggleChat()"
+                style="border:none;background:none;cursor:pointer;color:var(--muted);font-size:15px">✕</button>
+            </div>
+            <div id="ide-chat-messages" class="ide-chat-messages">
+              <div style="color:var(--hint);font-size:12px;font-style:italic;padding:4px">
+                Ask me to improve triggers, fix spec issues, add sections, or review the skill.
+              </div>
+            </div>
+            <div class="ide-chat-bottom">
+              <div class="ide-chips">
+                <button class="ide-chip" onclick="ideQuick('Improve the description and trigger phrases')">Better triggers</button>
+                <button class="ide-chip" onclick="ideQuick('Add a Gotchas section')">+ Gotchas</button>
+                <button class="ide-chip" onclick="ideQuick('Fix any agentskills.io spec issues')">Fix spec</button>
+                <button class="ide-chip" onclick="ideQuick('Review and critique this skill')">Review</button>
+              </div>
+              <textarea id="ide-chat-input" placeholder="Ask anything… Ctrl+Enter to send"
+                onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter')sendIdeChat()"
+                style="width:100%;min-height:52px;resize:none;font:inherit;font-size:12.5px;
+                border:1px solid var(--border);border-radius:var(--r);padding:6px 8px;
+                background:var(--surface);color:var(--text);outline:none;box-sizing:border-box"></textarea>
+              <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:5px">
+                <button class="btn btn-sm" onclick="clearIdeChat()">Clear</button>
+                <button class="btn btn-sm btn-primary" id="ide-send-btn" onclick="sendIdeChat()">Send</button>
+              </div>
+              <span class="status" id="s-ide-chat" style="font-size:12px"></span>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /ide-shell -->
+
+      <div class="ide-actions">
+        <button class="btn" onclick="goTo(2)">← Back</button>
+        <button class="btn btn-primary" onclick="goTo(4)">Test skill →</button>
+      </div>
+
+      <!-- Supporting files & evals -->
+      <div style="padding:0 2.5rem 1.5rem">
+        <div class="section-divider" style="cursor:pointer"
+          onclick="toggleSection('review-files-body','review-files-icon')">
+          Supporting files <span class="opt">— optional</span>
+          <span id="review-files-icon" style="float:right;font-size:11px">▾ show</span>
+        </div>
+        <div id="review-files-body" style="display:none;padding-top:.75rem">
+          <div id="existing-files-wrap" style="display:none">
+            <p class="hint" style="margin-bottom:8px">Files already on this branch:</p>
+            <div id="existing-files-list"></div>
+            <div style="height:1px;background:var(--border);margin:12px 0"></div>
+          </div>
+          <div id="file-list-review"></div>
+          <button class="btn btn-sm" onclick="addFileRow('review')" style="margin-top:.5rem">+ Add file</button>
+          <p class="hint" style="margin-top:6px">
+            <code>references/</code> · <code>procedures/</code> · <code>agents/</code> ·
+            <code>evals/</code> · <code>assets/</code>
+          </p>
+        </div>
+        <div style="margin-top:1rem">
+          <div class="section-divider" style="cursor:pointer"
+            onclick="toggleSection('review-evals-body','review-evals-icon')">
+            Skill evals <span class="opt">— optional but recommended</span>
+            <span id="review-evals-icon" style="float:right;font-size:11px">▾ show</span>
+          </div>
+          <div id="review-evals-body" style="display:none;padding-top:.75rem">
+            <p class="hint" style="margin-bottom:.75rem">
+              Committed as <code>evals/evals.json</code> and <code>evals/README.md</code>.
+            </p>
+            <div id="eval-list-review"></div>
+            <button class="btn btn-sm" onclick="addEvalRow('review')">+ Add test case</button>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ── Step 4: Test ────────────────────────────────────────── -->
+    <section class="panel" id="panel-4">
+      <h1>Test your skill</h1>
+      <p class="subtitle">Two ways to test — choose based on your skill type.</p>
+
+      <!-- Caveat banner -->
+      <div class="test-caveat">
+        <div class="test-caveat-row">
+          <span class="test-caveat-tag ok">✓ Prompt test works for</span>
+          <span class="test-caveat-text">Text-only skills — writing, analysis, documentation, code review, formatting</span>
+        </div>
+        <div class="test-caveat-row" style="margin-top:6px">
+          <span class="test-caveat-tag warn">⚠ Not sufficient for</span>
+          <span class="test-caveat-text">Skills with scripts, external APIs (Jira, Snowflake, Google), database connections, real data, or multi-step agentic workflows — use local install + evals for those</span>
+        </div>
+      </div>
+
+      <!-- Section A: Prompt test -->
+      <div class="test-section-title">A — Quick prompt test <span class="opt">(text-only skills)</span></div>
+
+      <div class="test-layout">
+        <!-- Left: prompt + response -->
+        <div class="test-main">
+          <div class="field">
+            <label>Test prompt</label>
+            <textarea id="test-prompt" style="min-height:80px"
+              placeholder="Type a prompt that should trigger this skill…&#10;e.g. Write a Slack post for our new dark mode feature"></textarea>
+          </div>
+          <div class="actions" style="margin-top:.75rem;margin-bottom:1rem">
+            <button class="btn btn-primary" id="test-btn" onclick="testSkill()">▶ Run test</button>
+            <button class="btn" onclick="clearTest()">Clear</button>
+            <span class="status" id="s-test"></span>
+          </div>
+
+          <div id="test-response-wrap" style="display:none">
+            <div class="test-response-bar">
+              <span style="font-size:12px;font-weight:600;color:var(--muted)">Response</span>
+              <button class="btn btn-sm" onclick="copyTestResponse()">Copy</button>
+            </div>
+            <div id="test-response" class="test-response-body"></div>
+          </div>
+
+          <div id="test-history"></div>
+        </div>
+
+        <!-- Right: skill context -->
+        <div class="test-sidebar">
+          <div class="split-pane-title">
+            📄 Skill context
+            <span style="font-size:11px;color:var(--hint);font-weight:400">sent to Claude as system prompt</span>
+          </div>
+          <div class="test-context-body">
+            <div id="test-skill-context" class="test-context-pre"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section B: Local install -->
+      <div class="test-section-title" style="margin-top:1.75rem">
+        B — Install to local machine
+        <span class="opt">(skills with scripts, APIs, evals, real data)</span>
+      </div>
+
+      <div class="local-install-box">
+        <div id="local-install-no-branch" style="display:none">
+          <p class="hint">Push your skill first to create a branch, then come back here to install it locally for full testing.</p>
+        </div>
+
+        <div id="local-install-has-branch">
+          <p style="font-size:13px;margin-bottom:1rem;color:var(--muted)">
+            Downloads a script that checks out your skill's branch and runs
+            <code>cli/install.sh</code> — so you can test with real Cursor or Claude Code
+            before the PR is approved.
+          </p>
+
+          <div class="local-install-steps">
+            <div class="local-step">
+              <span class="local-step-num">1</span>
+              <div>
+                <div class="local-step-title">Download install script</div>
+                <div class="local-step-body">
+                  <div class="install-branch-info">
+                    <code id="install-branch-display">—</code>
+                  </div>
+                  <button class="btn btn-primary" onclick="downloadInstallScript()" style="margin-top:8px">
+                    ↓ Download test-skill.sh
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="local-step">
+              <span class="local-step-num">2</span>
+              <div>
+                <div class="local-step-title">Run it — pass your local repo path</div>
+                <div class="local-step-body">
+                  <div class="code-block" id="install-run-cmd">bash test-skill.sh ~/projects/skills</div>
+                  <p class="hint" style="margin-top:5px">
+                    ⚠ Pass your <strong>local folder path</strong>, not a GitHub URL.<br>
+                    If not cloned yet: <code>git clone https://github.com/<span id="install-fork-hint">your-fork/skills</span>.git ~/projects/skills</code>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="local-step">
+              <span class="local-step-num">3</span>
+              <div>
+                <div class="local-step-title">Test in Cursor or Claude Code</div>
+                <div class="local-step-body" style="color:var(--muted);font-size:13px">
+                  Open your project in Cursor or run Claude Code. The skill is now installed locally.
+                  Try the prompts from your evals. If it needs API creds, set them in <code>.env</code> first.
+                </div>
+              </div>
+            </div>
+
+            <div class="local-step">
+              <span class="local-step-num">4</span>
+              <div>
+                <div class="local-step-title">Run evals (if you have them)</div>
+                <div class="local-step-body">
+                  <div class="code-block" id="install-evals-cmd">bash cli/run-evals.sh &lt;skill-slug&gt;</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="local-step">
+              <span class="local-step-num">5</span>
+              <div>
+                <div class="local-step-title">Restore main when done</div>
+                <div class="local-step-body">
+                  <div class="code-block">git checkout main &amp;&amp; bash cli/install.sh</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="actions" style="margin-top:1.5rem">
+        <button class="btn" onclick="goTo(3)">← Edit skill</button>
+        <button class="btn btn-primary" onclick="goTo(5)">Push to repo →</button>
+      </div>
+    </section>
+
+    <!-- ── Step 4 (old): Push ───────────────────────────────────────── -->
+    <section class="panel" id="panel-5">
+      <h1>Push to repo</h1>
+      <p class="subtitle">No Git needed — all done through the GitHub API.</p>
+
+      <!-- Repo config strip — shows what's being targeted -->
+      <div class="push-config-strip">
+        <span class="push-config-item">
+          🔀 Fork: <code id="push-show-repo">—</code>
+        </span>
+        <span class="push-config-sep">→ PR to →</span>
+        <span class="push-config-item">
+          ⬆ Upstream: <code id="push-show-upstream">—</code>
+        </span>
+        <span class="push-config-sep">·</span>
+        <span class="push-config-item">
+          Branch: <code id="push-show-branch">—</code>
+        </span>
+        <a href="#" onclick="goTo(0);return false"
+           style="font-size:11px;color:var(--muted);margin-left:auto">Edit setup</a>
+      </div>
+
+      <div class="push-editor-hint card" style="margin-bottom:1rem;padding:12px 14px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Content source (Review step)</div>
+          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:center">
+            <code id="push-show-skill-path" style="font-size:12px">—</code>
+            <button type="button" class="btn btn-sm" onclick="goTo(3)">Edit SKILL.md &amp; files in Review →</button>
+          </div>
+        </div>
+
+      <!-- Mode toggle -->
+      <div class="mode-toggle" id="mode-toggle">
+        <button class="mode-btn active" id="mode-new"  onclick="setMode('new')">
+          New PR
+        </button>
+        <button class="mode-btn"        id="mode-update" onclick="setMode('update')">
+          Update existing PR
+        </button>
+      </div>
+
+      <!-- New PR fields -->
+      <div id="new-pr-fields">
+        <div class="card">
+          <div class="card-title">Pull request details</div>
+          <div class="field">
+            <label>PR title</label>
+            <input type="text" id="pr-title">
+          </div>
+          <div class="field">
+            <label>Description for reviewers <span class="opt">(optional)</span></label>
+            <textarea id="pr-desc" style="min-height:60px"
+              placeholder="e.g. Fixed edge cases based on review comments."></textarea>
+          </div>
+          <div class="field" style="margin:0">
+            <label>Your name</label>
+            <input type="text" id="pr-author" placeholder="e.g. Sarah">
+          </div>
+        </div>
+      </div>
+
+      <!-- Update existing PR fields -->
+      <div id="update-pr-fields" style="display:none">
+        <div class="card">
+          <div class="card-title">Existing branch to update</div>
+          <div class="field">
+            <label>Branch name</label>
+            <input type="text" id="update-branch"
+              placeholder="e.g. skill/equivalence-partitioning-1778903200417">
+            <p class="hint">Copy from your open PR — shown under the PR title on GitHub.</p>
+          </div>
+          <div class="field" style="margin:0">
+            <label>Commit message</label>
+            <input type="text" id="update-msg" placeholder="e.g. fix: address review comments">
+          </div>
+        </div>
+        <div class="alert alert-warn show" style="margin-bottom:1rem">
+          ⚠ Pushes <strong>SKILL.md</strong> and supporting files from <strong>Review</strong> to the branch below.
+          Existing files on the branch are updated (not duplicated). The open PR refreshes automatically.
+        </div>
+      </div>
+
+      <!-- Progress log (shared) -->
+      <div id="push-checklist" class="card" style="display:none">
+        <div class="card-title">Progress</div>
+        <div id="push-steps"></div>
+      </div>
+
+      <div class="actions">
+        <button class="btn" onclick="goTo(3)">← Back</button>
+        <button class="btn btn-primary" id="push-btn" onclick="pushDispatch()">
+          Push →
+        </button>
+        <span class="status" id="s-push"></span>
+      </div>
+
+      <div class="alert alert-success" id="success-box"></div>
+      <div class="alert alert-error"   id="error-box"></div>
+    </section>
+
+    <!-- ── Step 5: Install ───────────────────────────────────── -->
+    <section class="panel" id="panel-6">
+      <h1>Install skills</h1>
+      <p class="subtitle">Once a PR is approved and merged upstream, anyone can install it.</p>
+
+      <div class="card">
+        <div class="card-title">How it works</div>
+        <div class="flow-diagram">
+          <div class="flow-box contrib">
+            <div class="flow-label">Contribution repo</div>
+            <div class="flow-repo" id="show-contrib-repo">pramodtoraskar/skills</div>
+            <div class="flow-desc">You submit PRs here via Skill Composer</div>
+          </div>
+          <div class="flow-arrow">→ PR approved →</div>
+          <div class="flow-box upstream">
+            <div class="flow-label">Upstream repo</div>
+            <div class="flow-repo" id="show-upstream-repo">anthropics/skills</div>
+            <div class="flow-desc">Approved skills merge here</div>
+          </div>
+          <div class="flow-arrow">→ users install from →</div>
+          <div class="flow-box install">
+            <div class="flow-label">End users</div>
+            <div class="flow-repo">git clone + install</div>
+            <div class="flow-desc">Always clone upstream</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Install instructions <span class="opt" style="text-transform:none;font-weight:400">— share this with end users</span></div>
+
+        <label style="font-size:12px;margin-bottom:6px;display:block">Clone upstream (source of truth)</label>
+        <div class="code-block" id="install-clone">git clone https://github.com/anthropics/skills.git</div>
+
+        <label style="font-size:12px;margin-top:14px;margin-bottom:6px;display:block">Run install</label>
+        <div class="code-block">bash cli/install.sh</div>
+
+        <label style="font-size:12px;margin-top:14px;margin-bottom:6px;display:block">Keep up to date</label>
+        <div class="code-block">git pull origin main<br>bash cli/install.sh</div>
+
+        <div class="actions" style="margin-top:1.25rem">
+          <button class="btn" onclick="copyInstall()">Copy install instructions</button>
+          <span class="status" id="s-copy"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Where NOT to install from</div>
+        <div class="val-item warning" style="margin-bottom:0">
+          <span class="val-icon">⚠</span>
+          <span>Do <strong>not</strong> clone the contribution repo (<span id="show-contrib-repo-2">pramodtoraskar/skills</span>).
+          It contains work-in-progress PRs and unreviewed skills.
+          Always install from upstream.</span>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+</div>
+
+<script>
+"use strict";
+
+// ── State ────────────────────────────────────────────────────────────────────
+const cfg   = { token:"", repo:"", upstream:"", branch:"main", path:"skills/", apiKey:"" };
+let   slug  = "";
+let   validationIssues = [];
+
+/** skills-hub folder groups (SKILL_INDEX.json categories). */
+const HUB_SKILL_CATEGORIES = [
+  "adoption-enablement", "ai-acceleration", "ai-factory", "astro", "console",
+  "data-analysis", "dataverse-data-products", "dataverse-platform", "dataverse-release-architect",
+  "devops", "google", "google-meetings", "jira", "plan-and-experiment-lifecycle",
+  "repository-activity-reporter", "resume-scanner", "sales-assistant", "secops",
+  "skills-core", "team-enablement", "transcript-to-adr", "ux-engineering",
+];
+
+function normalizePathPrefix(p) {
+  const s = (p || "skills/").trim().replace(/\\/g, "/");
+  if (!s) return "skills/";
+  return s.endsWith("/") ? s : s + "/";
+}
+
+function skillRootDir() {
+  return normalizePathPrefix(cfg.path) + (slug || "");
+}
+
+function skillMdPath() {
+  return skillRootDir() + "/SKILL.md";
+}
+
+function initSkillCategorySelect() {
+  const sel = el("f-skill-category");
+  if (!sel) return;
+  const keep = sel.value;
+  sel.innerHTML = '<option value="">Standalone — skills/&lt;skill-name&gt;/</option>';
+  HUB_SKILL_CATEGORIES.forEach(cat => {
+    const opt = document.createElement("option");
+    opt.value = cat;
+    opt.textContent = cat + " — skills/" + cat + "/";
+    sel.appendChild(opt);
+  });
+  if (keep && [...sel.options].some(o => o.value === keep)) sel.value = keep;
+}
+
+function categoryFromPathPrefix(prefix) {
+  const p = normalizePathPrefix(prefix);
+  const rest = p.replace(/^skills\//, "");
+  const segs = rest.split("/").filter(Boolean);
+  if (!segs.length) return "";
+  if (segs.length >= 1 && HUB_SKILL_CATEGORIES.includes(segs[0])) return segs[0];
+  return "";
+}
+
+function onSkillCategoryChange() {
+  const cat = v("f-skill-category");
+  const prefix = cat ? "skills/" + cat + "/" : "skills/";
+  cfg.path = prefix;
+  const pathInput = el("gh-path");
+  if (pathInput) pathInput.value = prefix;
+  persistConfig();
+}
+
+function onSetupPathChange() {
+  const prefix = normalizePathPrefix(v("gh-path"));
+  cfg.path = prefix;
+  const sel = el("f-skill-category");
+  if (sel) sel.value = categoryFromPathPrefix(prefix);
+  persistConfig();
+}
+
+function parseSkillPathFromRepo(repoPath) {
+  const norm = (repoPath || "").replace(/^\/+/, "");
+  const withoutFile = norm.replace(/\/?SKILL\.md$/i, "");
+  const parts = withoutFile.split("/").filter(Boolean);
+  if (!parts.length || parts[0] !== "skills") {
+    const slugOnly = parts[parts.length - 1] || "";
+    return { prefix: "skills/", category: "", slug: slugOnly };
+  }
+  const under = parts.slice(1);
+  if (!under.length) return { prefix: "skills/", category: "", slug: "" };
+  const skillSlug = under[under.length - 1];
+  const catParts = under.slice(0, -1);
+  if (!catParts.length) {
+    return { prefix: "skills/", category: "", slug: skillSlug };
+  }
+  const category = catParts[0];
+  const prefix = "skills/" + catParts.join("/") + "/";
+  return { prefix, category, slug: skillSlug };
+}
+
+function applyParsedSkillPath(parsed) {
+  if (!parsed) return;
+  if (parsed.slug) slug = parsed.slug;
+  cfg.path = normalizePathPrefix(parsed.prefix);
+  const pathInput = el("gh-path");
+  if (pathInput) pathInput.value = cfg.path;
+  const sel = el("f-skill-category");
+  if (sel) sel.value = parsed.category || "";
+  persistConfig();
+}
+
+// ── Persist config in localStorage ───────────────────────────────────────────
+const STORAGE_KEY = "skills-composer-cfg";
+
+function loadSavedConfig() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+    if (saved.token)    el("gh-token").value    = saved.token;
+    if (saved.upstream) el("gh-upstream").value = saved.upstream;
+    if (saved.branch)   el("gh-branch").value   = saved.branch;
+    if (saved.path) {
+      cfg.path = normalizePathPrefix(saved.path);
+      el("gh-path").value = cfg.path;
+    }
+    if (saved.apiKey) el("api-key").value = saved.apiKey;
+
+    // Skip Setup if anything at all is saved — user can always click Edit setup
+    const hasSomething = saved.token || saved.upstream || saved.apiKey;
+    if (hasSomething) {
+      Object.assign(cfg, saved);
+      if (saved.path) cfg.path = normalizePathPrefix(saved.path);
+      updateInstallPanel();
+      updateSidebarStatus();
+      if (saved.repo) {
+        el("fork-status-box").style.display = "block";
+        el("fork-status-body").innerHTML = `
+          <div class="val-item pass" style="margin-bottom:8px">
+            <span class="val-icon">✓</span>
+            <span>Fork: <strong>${saved.repo}</strong></span>
+          </div>
+          <div style="font-size:12.5px;color:var(--muted)">
+            → PR to <code>${saved.upstream || "upstream"}</code>
+          </div>`;
+      }
+      goTo(1);
+    }
+  } catch(e) { /* ignore */ }
+}
+
+function updateSidebarStatus() {
+  const status = el("sidebar-status");
+  const body   = el("sidebar-status-body");
+  if (!status || !body) return;
+
+  const lines = [];
+  if (cfg.upstream) lines.push(`⬆ ${cfg.upstream}`);
+  if (cfg.repo)     lines.push(`🔀 ${cfg.repo}`);
+  if (!cfg.token)   lines.push(`⚠ No GitHub token — push disabled`);
+  if (!cfg.apiKey && !serverHasKey) lines.push(`⚠ No Anthropic key — generate disabled`);
+
+  if (lines.length) {
+    status.style.display = "block";
+    body.innerHTML = lines
+      .map(l => `<div class="sidebar-status-line">${l}</div>`)
+      .join("");
+  } else {
+    status.style.display = "none";
+  }
+}
+
+// Set by /api/config — loaded lazily, not at boot
+let serverHasKey = false;
+function loadServerConfig() {
+  fetch("/api/config")
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(d => { serverHasKey = !!d.anthropicKeyConfigured; updateSidebarStatus(); })
+    .catch(() => {}); // silent — server may not be running yet
+}
+
+function persistConfig() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      token:    cfg.token,
+      repo:     cfg.repo,
+      upstream: cfg.upstream,
+      branch:   cfg.branch,
+      path:     cfg.path,
+      apiKey:   cfg.apiKey,
+    }));
+  } catch(e) { /* ignore */ }
+}
+
+function updateInstallPanel() {
+  const up   = cfg.upstream || cfg.repo;
+  const down = cfg.repo;
+  el("show-upstream-repo").textContent   = up;
+  el("show-contrib-repo").textContent    = down;
+  el("show-contrib-repo-2").textContent  = down;
+  el("install-clone").textContent = `git clone https://github.com/${up}.git`;
+}
+
+function clearConfig() {
+  localStorage.removeItem(STORAGE_KEY);
+  ["gh-token","gh-repo","gh-branch","gh-path","api-key"].forEach(id => el(id).value = "");
+  el("gh-branch").value = "main";
+  Object.assign(cfg, { token:"", repo:"", branch:"main", path:"skills/", apiKey:"" });
+  goTo(0);
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function goTo(n) {
+  [0,1,2,3,4,5,6].forEach(i => {
+    document.getElementById(`panel-${i}`).classList.toggle("active", i === n);
+    const nav = document.getElementById(`nav-${i}`);
+    nav.classList.remove("active","done","err");
+    if (i === n) nav.classList.add("active");
+    else if (i < n) nav.classList.add("done");
+    document.getElementById(`sn-${i}`).textContent = i < n ? "✓" : i + 1;
+  });
+  if (n === 1) mountAttachmentsForStep(1);
+  if (n === 3) {
+    cacheAllFileRows().then(() => {
+      mountAttachmentsForStep(3);
+      initIDE();
+    });
+  }
+  // Populate skill context when entering Test panel
+  if (n === 4) populateTestContext();
+  // Populate push config strip when entering Push panel
+  if (n === 5) {
+    el("push-show-repo").textContent     = cfg.repo     || "not set — go to Setup";
+    el("push-show-upstream").textContent = cfg.upstream || "not set";
+    el("push-show-branch").textContent   = cfg.branch   || "main";
+    if (!cfg.repo) {
+      el("push-show-repo").style.color = "var(--red)";
+    }
+    const pathEl = el("push-show-skill-path");
+    if (pathEl) pathEl.textContent = skillMdPath() || "(generate or load a skill first)";
+    preparePushPanel();
+  }
+}
+
+
+// ── Sync supporting files / evals between Create and Review ─────────────────
+let activeSupportRowId = null;
+
+function moveChildNodes(fromEl, toEl) {
+  if (!fromEl || !toEl) return;
+  while (fromEl.firstChild) toEl.appendChild(fromEl.firstChild);
+}
+
+function mountAttachmentsForStep(step) {
+  const fileCreate = el("file-list");
+  const fileReview = el("file-list-review");
+  const evalCreate = el("eval-list");
+  const evalReview = el("eval-list-review");
+  if (step === 3) {
+    moveChildNodes(fileCreate, fileReview);
+    moveChildNodes(evalCreate, evalReview);
+    expandReviewAttachmentPanels();
+    refreshAttachmentBar();
+  } else if (step === 1) {
+    moveChildNodes(fileReview, fileCreate);
+    moveChildNodes(evalReview, evalCreate);
+    closeSupportEditor();
+  }
+}
+
+function expandReviewAttachmentPanels() {
+  const fileCount = el("file-list-review")?.children.length || 0;
+  const evalCount = el("eval-list-review")?.children.length || 0;
+  if (fileCount) {
+    el("review-files-body").style.display = "";
+    el("review-files-icon").textContent = "▴ hide";
+  }
+  if (evalCount) {
+    el("review-evals-body").style.display = "";
+    el("review-evals-icon").textContent = "▴ hide";
+  }
+}
+
+function fileRowLabel(id) {
+  const name = el(`file-name-${id}`)?.textContent?.trim() || "";
+  const type = el(`file-type-${id}`)?.value || "reference";
+  const folder = FILE_TYPES[type]?.folder || "references/";
+  if (!name || name === "No file chosen" || name.startsWith("✗")) return null;
+  return `${folder}${name}`;
+}
+
+async function cacheFileRowText(id) {
+  const row = el(`file-row-${id}`);
+  const input = el(`file-input-${id}`);
+  if (!row) return;
+  if (!input?.files?.length) {
+    if (row.dataset.cachedText) return;
+    return;
+  }
+  const file = input.files[0];
+  const ext = "." + file.name.split(".").pop().toLowerCase();
+  if ([".md", ".txt", ".json", ".csv"].includes(ext)) {
+    try { row.dataset.cachedText = await file.text(); } catch (e) { /* binary */ }
+  }
+  row.dataset.cachedName = file.name;
+  row.dataset.cachedType = el(`file-type-${id}`)?.value || "reference";
+}
+
+async function cacheAllFileRows() {
+  const rows = document.querySelectorAll('[id^="file-row-"]');
+  for (const row of rows) {
+    const id = row.id.replace("file-row-", "");
+    await cacheFileRowText(id);
+  }
+}
+
+function refreshAttachmentBar() {
+  const bar = el("ide-attachment-bar");
+  if (!bar) return;
+  bar.innerHTML = "";
+  const rows = [...document.querySelectorAll('[id^="file-row-"]')].filter(r => r.closest("#file-list-review, #file-list"));
+  const skillChip = document.createElement("button");
+  skillChip.type = "button";
+  skillChip.className = "ide-attachment-chip" + (activeSupportRowId ? "" : " active");
+  skillChip.textContent = "SKILL.md";
+  skillChip.onclick = () => closeSupportEditor();
+  bar.appendChild(skillChip);
+  rows.forEach(row => {
+    const id = row.id.replace("file-row-", "");
+    const label = fileRowLabel(id);
+    if (!label) return;
+    const chip = document.createElement("button");
+    chip.type = "button";
+    chip.className = "ide-attachment-chip" + (activeSupportRowId === id ? " active" : "");
+    chip.textContent = label;
+    chip.title = label;
+    chip.onclick = () => openSupportEditor(id);
+    bar.appendChild(chip);
+  });
+}
+
+async function openSupportEditor(rowId) {
+  const row = el(`file-row-${rowId}`);
+  if (!row) return;
+  await cacheFileRowText(rowId);
+  const label = fileRowLabel(rowId);
+  const ext = "." + (label?.split("/").pop()?.split(".").pop() || "").toLowerCase();
+  const editable = [".md", ".txt", ".json", ".csv"].includes(ext);
+  activeSupportRowId = rowId;
+  el("ide-support-path").textContent = label || rowId;
+  const ta = el("ide-support-preview");
+  ta.value = row.dataset.cachedText || "";
+  ta.readOnly = !editable;
+  const wrap = el("ide-support-editor");
+  wrap.classList.add("open");
+  wrap.setAttribute("aria-hidden", "false");
+  el("monaco-container").style.display = "none";
+  el("skill-preview").style.display = "none";
+  if (monacoReady && monacoEditor) monacoEditor.getDomNode().style.display = "none";
+  refreshAttachmentBar();
+  if (editable) {
+    ta.oninput = () => { row.dataset.cachedText = ta.value; };
+  }
+}
+
+function closeSupportEditor() {
+  activeSupportRowId = null;
+  const wrap = el("ide-support-editor");
+  if (wrap) {
+    wrap.classList.remove("open");
+    wrap.setAttribute("aria-hidden", "true");
+  }
+  el("monaco-container").style.display = "";
+  if (monacoReady && monacoEditor) {
+    monacoEditor.getDomNode().style.display = "";
+  } else {
+    el("skill-preview").style.display = "";
+  }
+  refreshAttachmentBar();
+}
+
+// ── Test skill ────────────────────────────────────────────────────────────────
+let testHistory  = [];
+let pushedBranch = ""; // set after a successful push, or when loaded from PR
+
+function populateTestContext() {
+  const content = getSkillContent();
+  const ctx = el("test-skill-context");
+  if (ctx) ctx.textContent = content || "(no skill content yet — go back and generate)";
+  updateLocalInstallPanel();
+}
+
+function updateLocalInstallPanel() {
+  const branch = loadedBranch || pushedBranch;
+  const hasBranch = !!branch;
+  const repoName = (cfg.repo || "skills").split("/")[1] || "skills";
+
+  el("local-install-no-branch").style.display  = hasBranch ? "none" : "block";
+  el("local-install-has-branch").style.display = hasBranch ? "block" : "none";
+
+  if (hasBranch) {
+    el("install-branch-display").textContent = branch;
+    el("install-run-cmd").textContent =
+      `bash test-${slug || "skill"}.sh ~/projects/${repoName}`;
+    el("install-evals-cmd").textContent =
+      `bash cli/run-evals.sh ${slug || "<skill-slug>"}`;
+    const forkHint = el("install-fork-hint");
+    if (forkHint) forkHint.textContent = cfg.repo || "your-fork/skills";
+  }
+}
+
+function downloadInstallScript() {
+  const branch   = loadedBranch || pushedBranch;
+  const skillSlug = slug || "skill";
+  const repoName  = (cfg.repo || "skills").split("/")[1] || "skills";
+
+  const script = `#!/usr/bin/env bash
+# Install skill '${skillSlug}' from branch '${branch}' for local testing.
+# Generated by Skill Composer — https://agentskills.io
+#
+# Usage:
+#   bash test-${skillSlug}.sh /path/to/your/local/skills-hub
+#
+# NOTE: Pass the LOCAL directory path, not a GitHub URL.
+#   ✓  bash test-${skillSlug}.sh ~/projects/${repoName}
+#   ✗  bash test-${skillSlug}.sh https://github.com/...   ← won't work
+#
+set -euo pipefail
+
+REPO_DIR="\${1:-}"
+BRANCH="${branch}"
+SKILL="${skillSlug}"
+
+# ── Detect common mistakes ─────────────────────────────────────────────────────
+if [[ -z "\$REPO_DIR" ]]; then
+  echo ""
+  echo "  Usage: bash test-${skillSlug}.sh /path/to/your/local/skills-hub"
+  echo ""
+  echo "  Pass the path to your LOCAL clone of the skills repo."
+  echo "  e.g.  bash test-${skillSlug}.sh ~/projects/${repoName}"
+  echo ""
+  echo "  If you haven't cloned yet:"
+  echo "    git clone https://github.com/${cfg.repo || "your-fork/skills"}.git ~/projects/${repoName}"
+  echo ""
+  exit 1
+fi
+
+if [[ "\$REPO_DIR" == http* || "\$REPO_DIR" == git@* ]]; then
+  echo ""
+  echo "  ✗  That looks like a URL, not a local path."
+  echo "     Pass the path to your LOCAL clone instead."
+  echo "     e.g. bash test-${skillSlug}.sh ~/projects/${repoName}"
+  echo ""
+  echo "  If you haven't cloned yet:"
+  echo "    git clone https://github.com/${cfg.repo || "your-fork/skills"}.git ~/projects/${repoName}"
+  echo "    bash test-${skillSlug}.sh ~/projects/${repoName}"
+  echo ""
+  exit 1
+fi
+
+# ── Sanity checks ──────────────────────────────────────────────────────────────
+if [[ ! -d "\$REPO_DIR" ]]; then
+  echo "  ✗  Directory not found: \$REPO_DIR"
+  echo "     Check the path and try again."
+  exit 1
+fi
+
+if [[ ! -d "\$REPO_DIR/.git" ]]; then
+  echo "  ✗  Not a git repo: \$REPO_DIR"
+  echo "     Pass the root of your local skills-hub clone."
+  echo "     e.g. bash test-${skillSlug}.sh ~/projects/${repoName}"
+  exit 1
+fi
+
+if [[ ! -f "\$REPO_DIR/cli/install.sh" ]]; then
+  echo "  ✗  cli/install.sh not found in \$REPO_DIR — is this the right repo?"
+  exit 1
+fi
+
+cd "\$REPO_DIR"
+
+# ── Save current state ─────────────────────────────────────────────────────────
+CURRENT_BRANCH=\$(git branch --show-current 2>/dev/null || git rev-parse --abbrev-ref HEAD)
+echo "  Current branch: \$CURRENT_BRANCH"
+
+if ! git diff --quiet || ! git diff --staged --quiet; then
+  echo "  Stashing uncommitted changes…"
+  git stash push -m "skills-composer: pre-test stash"
+  STASHED=1
+else
+  STASHED=0
+fi
+
+# ── Fetch and checkout branch ──────────────────────────────────────────────────
+echo "  Fetching \$BRANCH…"
+git fetch origin "\$BRANCH"
+
+echo "  Checking out \$BRANCH…"
+git checkout "\$BRANCH"
+
+# ── Install ────────────────────────────────────────────────────────────────────
+echo "  Running cli/install.sh…"
+bash cli/install.sh
+
+echo ""
+echo "  ✓ Skill '\$SKILL' is installed from branch '\$BRANCH'"
+echo ""
+echo "  What to do now:"
+echo "    1. Open Cursor or run Claude Code in this repo"
+echo "    2. Test with prompts from evals/scenarios.md"
+echo "    3. If skill needs API creds — set them in .env first"
+echo "    4. Run evals:  bash cli/run-evals.sh \$SKILL"
+echo ""
+echo "  When done, restore your branch:"
+echo "    git checkout \$CURRENT_BRANCH && bash cli/install.sh"
+if [[ \$STASHED -eq 1 ]]; then
+  echo "    git stash pop"
+fi
+echo ""
+`;
+
+  const blob = new Blob([script], { type: "text/x-sh" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href     = url;
+  a.download = `test-${skillSlug}.sh`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+async function testSkill() {
+  const prompt  = el("test-prompt").value.trim();
+  const content = getSkillContent();
+
+  if (!prompt)  { st("s-test","Enter a test prompt","err"); return; }
+  if (!content) { st("s-test","No skill content — generate first","err"); return; }
+
+  const btn = el("test-btn");
+  btn.disabled = true;
+  st("s-test","Running…","spin");
+  el("test-response-wrap").style.display = "none";
+
+  try {
+    const res = await fetch("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        __test:       true,
+        skillContext: content,
+        userPrompt:   prompt,
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "API error");
+
+    const response = data.response || "";
+    el("test-response").textContent = response;
+    el("test-response-wrap").style.display = "block";
+    st("s-test","");
+    testHistory.unshift({ prompt, response });
+    renderTestHistory();
+
+  } catch(e) {
+    st("s-test", e.message, "err");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function renderTestHistory() {
+  const hist = el("test-history");
+  if (!hist || testHistory.length <= 1) return;
+  // Show previous runs (skip index 0, that's in the main response box)
+  hist.innerHTML = testHistory.slice(1).map((t,i) => `
+    <div class="test-history-item">
+      <div class="test-history-prompt">Run ${testHistory.length - 1 - i}: ${t.prompt.slice(0,80)}${t.prompt.length>80?"…":""}</div>
+      <div class="test-history-response">${t.response.replace(/</g,"&lt;")}</div>
+    </div>`).join("");
+}
+
+function clearTest() {
+  el("test-prompt").value = "";
+  el("test-response-wrap").style.display = "none";
+  el("test-history").innerHTML = "";
+  testHistory = [];
+  st("s-test","");
+}
+
+function copyTestResponse() {
+  const text = el("test-response").textContent;
+  navigator.clipboard.writeText(text)
+    .then(() => { const b = event.target; b.textContent="Copied!"; setTimeout(()=>b.textContent="Copy",1500); });
+}
+
+// ── Step 0: Setup ─────────────────────────────────────────────────────────────
+async function setupAndFork() {
+  const token    = v("gh-token");
+  const upstream = v("gh-upstream");
+  const branch   = v("gh-branch") || "main";
+  const path     = normalizePathPrefix(v("gh-path") || "skills/");
+  const apiKey   = v("api-key");
+
+  // No hard requirements — save what we have and proceed
+  // Token + upstream only needed at push time
+  if (!token && !upstream) {
+    // Bare minimum save — still lets user browse + generate
+    Object.assign(cfg, { token:"", repo:"", upstream:"", branch, path, apiKey });
+    persistConfig();
+    updateSidebarStatus();
+    goTo(1);
+    return;
+  }
+
+  // If token provided without upstream, or upstream without token — save partial and go
+  if (!token && upstream) {
+    Object.assign(cfg, { token:"", repo:"", upstream, branch, path, apiKey });
+    persistConfig();
+    updateSidebarStatus();
+    goTo(1);
+    return;
+  }
+
+  if (token && !upstream) {
+    Object.assign(cfg, { token, repo:"", upstream:"", branch, path, apiKey });
+    persistConfig();
+    updateSidebarStatus();
+    st("s-setup","Saved — enter Upstream repo when ready to push","");
+    goTo(1);
+    return;
+  }
+
+  // Both token + upstream provided — do full fork detection
+  const btn = el("setup-btn");
+  btn.disabled = true;
+  el("fork-status-box").style.display = "none";
+  st("s-setup","Checking your token…","spin");
+
+  try {
+    // 1. Get authenticated user
+    const user = await ghSetup("GET","https://api.github.com/user", token);
+    if (user.message) throw new Error("Invalid token: " + user.message);
+    const username = user.login;
+
+    const [upOwner, upRepo] = upstream.split("/");
+    if (!upOwner || !upRepo) throw new Error("Upstream must be owner/repo format");
+
+    // 2. Check if upstream exists
+    st("s-setup","Checking upstream repo…","spin");
+    const upCheck = await ghSetup("GET",`https://api.github.com/repos/${upstream}`, token);
+    if (upCheck.message) throw new Error(`Upstream repo "${upstream}" not found or not accessible`);
+
+    // 3. Check if user already has a fork
+    st("s-setup","Looking for your fork…","spin");
+    const forkName  = `${username}/${upRepo}`;
+    const forkCheck = await ghSetup("GET",`https://api.github.com/repos/${forkName}`, token);
+
+    let forkRepo = "";
+    let isNew    = false;
+
+    if (!forkCheck.message && forkCheck.fork) {
+      // Fork already exists
+      forkRepo = forkName;
+    } else if (!forkCheck.message && !forkCheck.fork) {
+      // Repo exists but is not a fork — could be the upstream itself or an unrelated repo
+      // Check if it has the same name and different owner
+      if (forkCheck.full_name === upstream) {
+        throw new Error(`You appear to own the upstream repo. Use a different account to contribute.`);
+      }
+      // Same name repo exists but is not a fork — use it anyway, user owns it
+      forkRepo = forkName;
+    } else {
+      // Fork doesn't exist — create it
+      st("s-setup","Creating your fork…","spin");
+      const forkRes = await ghSetup("POST",
+        `https://api.github.com/repos/${upstream}/forks`, token, {});
+      if (forkRes.message) throw new Error("Fork failed: " + forkRes.message);
+      forkRepo = forkRes.full_name || forkName;
+      isNew = true;
+
+      // GitHub forks are async — poll until ready (max 15s)
+      st("s-setup","Waiting for fork to be ready…","spin");
+      let ready = false;
+      for (let i = 0; i < 15; i++) {
+        await new Promise(r => setTimeout(r, 1000));
+        const poll = await ghSetup("GET",`https://api.github.com/repos/${forkRepo}`, token);
+        if (!poll.message) { ready = true; break; }
+      }
+      if (!ready) throw new Error("Fork is taking longer than expected. Try again in a moment.");
+    }
+
+    // 4. Save config
+    Object.assign(cfg, { token, repo: forkRepo, upstream, branch, path, apiKey });
+    const catSel = el("f-skill-category");
+    if (catSel) catSel.value = categoryFromPathPrefix(path);
+    persistConfig();
+    updateInstallPanel();
+    updateSidebarStatus();
+
+    // 5. Show fork status
+    el("fork-status-box").style.display = "block";
+    el("fork-status-body").innerHTML = `
+      <div class="val-item pass" style="margin-bottom:8px">
+        <span class="val-icon">✓</span>
+        <span>${isNew ? "Fork created" : "Fork found"}: <strong>${forkRepo}</strong></span>
+      </div>
+      <div style="font-size:12.5px;color:var(--muted)">
+        Contributions go to <code>${forkRepo}</code> → PR to <code>${upstream}</code>
+      </div>`;
+
+    st("s-setup","");
+    // Small delay so user sees the fork status before moving on
+    await new Promise(r => setTimeout(r, 900));
+    goTo(1);
+
+  } catch(e) {
+    st("s-setup", e.message, "err");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// Lightweight GH call for setup (no proxy dependency yet)
+async function ghSetup(method, url, token, body) {
+  try {
+    const opts = {
+      method,
+      headers: {
+        "Authorization": `token ${token}`,
+        "Content-Type":  "application/json",
+        "Accept":        "application/vnd.github.v3+json",
+      }
+    };
+    if (body !== undefined) opts.body = JSON.stringify(body);
+    const r = await fetch(url, opts);
+    return await r.json();
+  } catch(e) {
+    return { message: e.message };
+  }
+}
+
+// ── Step 1: Live field validation ─────────────────────────────────────────────
+function onNameInput() {
+  const val = v("f-name");
+  const cc  = document.getElementById("cc-name");
+  cc.textContent = val.length + "/64";
+  cc.className = "char-count" + (val.length > 64 ? " over" : val.length > 50 ? " warn" : "");
+  clearMsg("msg-name");
+  // Check for duplicates against live skill index
+  const slugVal = val.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  checkDuplicate(slugVal);
+}
+function onDescInput() {
+  const val = v("f-desc");
+  const cc  = document.getElementById("cc-desc");
+  cc.textContent = val.length + "/1024";
+  cc.className = "char-count" + (val.length > 1024 ? " over" : val.length > 900 ? " warn" : "");
+  clearMsg("msg-desc");
+}
+function onCompatInput() {
+  const val = v("f-compat");
+  if (val.length > 500) showMsg("msg-compat", "error", `${val.length}/500 — max 500 characters`);
+  else clearMsg("msg-compat");
+}
+
+// ── Skill tree ────────────────────────────────────────────────────────────────
+function renderSkillTree() {
+  const tree = el("skill-tree");
+  if (!tree) return;
+  if (!slug) { tree.innerHTML = '<div class="tree-empty">Generate a skill to see the tree</div>'; return; }
+
+  // Collect all files that will be committed
+  const files = [
+    { path: `SKILL.md`, badge: "req", icon: "📄" },
+  ];
+
+  // Collect uploaded files from all contexts
+  document.querySelectorAll('[id^="file-row-"]').forEach(row => {
+    const id     = row.id.replace("file-row-", "");
+    const input  = el(`file-input-${id}`);
+    const type   = el(`file-type-${id}`)?.value;
+    if (!input?.files?.length) return;
+    const fname  = input.files[0].name;
+    const folder = FILE_TYPES[type]?.folder || "";
+    files.push({ path: folder + fname, badge: "new", icon: fileIcon(fname) });
+  });
+
+  // Evals from builder
+  const evals = collectEvals();
+  if (evals.length) {
+    files.push({ path: "evals/evals.json", badge: "new", icon: "📋" });
+    files.push({ path: "evals/README.md",  badge: "new", icon: "📄" });
+  }
+
+  // Group by folder
+  const byFolder = {};
+  files.forEach(f => {
+    const parts  = f.path.split("/");
+    const folder = parts.length > 1 ? parts.slice(0,-1).join("/") + "/" : "";
+    const name   = parts[parts.length - 1];
+    if (!byFolder[folder]) byFolder[folder] = [];
+    byFolder[folder].push({ ...f, name });
+  });
+
+  const skillBase = skillRootDir() + "/";
+  const treeParts = skillBase.replace(/\/$/, "").split("/").filter(Boolean);
+  let html = "";
+  let pad = 0;
+  treeParts.forEach(part => {
+    html += `<div style="padding-left:${pad}px"><div class="tree-folder"><span class="tree-line">📁</span> <span class="tree-folder-name">${part}/</span></div></div>`;
+    pad += 12;
+  });
+  html += `<div style="padding-left:${pad}px">`;
+
+  // Root files first
+  (byFolder[""] || []).forEach(f => {
+    html += treeFile(f);
+  });
+
+  // Subfolders
+  const folders = Object.keys(byFolder).filter(k => k !== "").sort();
+  folders.forEach(folder => {
+    html += `<div class="tree-folder"><span class="tree-line">📁</span> <span class="tree-folder-name">${folder}</span></div>`;
+    html += `<div style="padding-left:12px">`;
+    byFolder[folder].forEach(f => { html += treeFile(f); });
+    html += `</div>`;
+  });
+
+  html += `</div>`;
+  tree.innerHTML = html;
+}
+
+function treeFile(f) {
+  const badgeHtml = f.badge === "req"
+    ? `<span class="tree-badge req">required</span>`
+    : `<span class="tree-badge new">new</span>`;
+  return `<div class="tree-file ${f.badge === 'req' ? 'required' : 'new'}">
+    <span class="tree-file-icon">${f.icon}</span>
+    <span class="tree-file-name">${f.name}</span>
+    ${badgeHtml}
+  </div>`;
+}
+
+function fileIcon(name) {
+  const ext = name.split(".").pop().toLowerCase();
+  return { md:"📄", json:"📋", csv:"📊", txt:"📝", xlsx:"📊", gitignore:"🔧" }[ext] || "📄";
+}
+
+let existingFiles   = [];  // [{path, sha, name, folder}]
+let filesToDelete   = new Set(); // paths marked for deletion
+
+async function fetchExistingFiles(branch) {
+  const {repo, path: skillsFolder} = cfg;
+  const folder = skillRootDir() + "/";
+  existingFiles = [];
+  filesToDelete = new Set();
+
+  try {
+    const tip = await gh("GET", gitRefsHeadsUrl(repo, branch));
+    const treeSha = tip?.object?.sha;
+    if (!treeSha) return;
+    const tree = await gh("GET",
+      `https://api.github.com/repos/${repo}/git/trees/${treeSha}?recursive=1`);
+    if (tree.message || !tree.tree) return;
+
+    // Find all files inside the skill folder, excluding SKILL.md itself
+    const supportDirs = [...new Set(Object.values(FILE_TYPES).map(t => t.folder))];
+    const found = tree.tree.filter(f =>
+      f.type === "blob" &&
+      f.path.startsWith(folder) &&
+      !f.path.endsWith("SKILL.md") &&
+      supportDirs.some(d => f.path.includes(`/${d}`) || f.path.startsWith(folder + d))
+    );
+
+    existingFiles = found.map(f => ({
+      path:   f.path,
+      sha:    f.sha,
+      name:   f.path.split("/").pop(),
+      relPath: f.path.replace(folder, ""), // e.g. scripts/run.py
+    }));
+
+    renderExistingFiles();
+  } catch(e) { /* non-fatal */ }
+}
+
+function renderExistingFiles() {
+  const wrap = el("existing-files-wrap");
+  const list = el("existing-files-list");
+  if (!existingFiles.length) { wrap.style.display = "none"; return; }
+
+  wrap.style.display = "block";
+  list.innerHTML = existingFiles.map(f => `
+    <div class="existing-file-row" id="ef-${f.sha}">
+      <div class="existing-file-info">
+        <span class="existing-file-path">${f.relPath}</span>
+        <span class="existing-file-badge" id="ef-badge-${f.sha}">existing</span>
+      </div>
+      <div class="existing-file-actions">
+        <button class="btn btn-sm" onclick="replaceExistingFile('${f.sha}','${f.relPath}')">Replace</button>
+        <button class="btn btn-sm" style="color:var(--red)" onclick="toggleDeleteFile('${f.sha}','${f.path}')">Delete</button>
+      </div>
+    </div>`).join("");
+}
+
+function toggleDeleteFile(sha, path) {
+  const badge = el(`ef-badge-${sha}`);
+  if (filesToDelete.has(path)) {
+    filesToDelete.delete(path);
+    badge.textContent = "existing";
+    badge.className = "existing-file-badge";
+  } else {
+    filesToDelete.add(path);
+    badge.textContent = "will delete";
+    badge.className = "existing-file-badge deleted";
+  }
+}
+
+function replaceExistingFile(sha, relPath) {
+  // Create a hidden file input, trigger it, on change upload as replacement
+  const input = document.createElement("input");
+  input.type = "file";
+  input.onchange = async () => {
+    if (!input.files.length) return;
+    const file   = input.files[0];
+    const badge  = el(`ef-badge-${sha}`);
+    const b64    = await readFileAsBase64(file);
+    // Store as pending replace — keyed by sha
+    input._replace = { sha, relPath, name: file.name, content: b64 };
+    badge.textContent = `→ ${file.name}`;
+    badge.className = "existing-file-badge";
+    badge.style.background = "var(--amber-bg)";
+    badge.style.color = "var(--amber)";
+    badge.style.borderColor = "var(--amber-bd)";
+    // Attach to DOM so we can collect it later
+    input.id = `replace-input-${sha}`;
+    input.style.display = "none";
+    document.body.appendChild(input);
+  };
+  input.click();
+}
+
+async function collectPendingReplaces() {
+  const replaces = [];
+  document.querySelectorAll('[id^="replace-input-"]').forEach(inp => {
+    if (inp._replace) replaces.push(inp._replace);
+  });
+  return replaces;
+}
+
+// ── Supporting files ──────────────────────────────────────────────────────────
+let fileRowCount = 0;
+
+const FILE_TYPES = {
+  reference: { label: "Reference doc",  folder: "references/",     exts: [".md"] },
+  procedure: { label: "Procedure",      folder: "procedures/",     exts: [".md"] },
+  agent:     { label: "Agent prompt",   folder: "agents/",         exts: [".md"] },
+  eval:      { label: "Eval file",      folder: "evals/",          exts: [".json",".md",".csv"] },
+  fixture:   { label: "Eval fixture",   folder: "evals/fixtures/", exts: [".txt",".json",".csv"] },
+  asset:     { label: "Asset",          folder: "assets/",         exts: [".md",".txt",".csv",".xlsx",".gitignore"] },
+};
+
+const ALLOWED_EXTS = [".md",".json",".csv",".txt",".xlsx",".gitignore"];
+
+function addFileRow(ctx) {
+  ctx = ctx || "create";
+  const id  = `${ctx}-${++fileRowCount}`;
+  const typeOptions = Object.entries(FILE_TYPES)
+    .map(([k,v]) => `<option value="${k}">${v.label} → ${v.folder}</option>`)
+    .join("");
+
+  const div = document.createElement("div");
+  div.className = "file-row";
+  div.id = `file-row-${id}`;
+  div.innerHTML = `
+    <div class="file-pick">
+      <button class="file-pick-btn" onclick="triggerFilePick('${id}')">Choose file</button>
+      <span class="file-name" id="file-name-${id}">No file chosen</span>
+      <input type="file" id="file-input-${id}"
+        accept="${ALLOWED_EXTS.join(',')}"
+        onchange="onFileChosen('${id}')">
+    </div>
+    <select id="file-type-${id}" onchange="updateAccept('${id}')">
+      ${typeOptions}
+    </select>
+    <button class="row-del" onclick="removeRow('file-row-${id}')" title="Remove">×</button>`;
+  el(ctx === "review" ? "file-list-review" : "file-list").appendChild(div);
+  if (ctx === "review" || el("panel-3")?.classList.contains("active")) {
+    refreshAttachmentBar();
+    expandReviewAttachmentPanels();
+  }
+}
+
+function triggerFilePick(id) {
+  // Set accept based on current type selection before opening picker
+  updateAccept(id);
+  el(`file-input-${id}`).click();
+}
+
+function updateAccept(id) {
+  const type   = el(`file-type-${id}`)?.value;
+  const input  = el(`file-input-${id}`);
+  if (!input) return;
+  const exts   = FILE_TYPES[type]?.exts || ALLOWED_EXTS;
+  input.accept = exts.join(",");
+}
+
+function onFileChosen(id) {
+  const input  = el(`file-input-${id}`);
+  const file   = input?.files?.[0];
+  if (!file) return;
+
+  const type   = el(`file-type-${id}`)?.value;
+  const exts   = FILE_TYPES[type]?.exts || ALLOWED_EXTS;
+  const ext    = "." + file.name.split(".").pop().toLowerCase();
+  const label  = el(`file-name-${id}`);
+
+  if (!exts.includes(ext)) {
+    label.textContent = `✗ ${file.name} — not allowed for this type (${exts.join(", ")})`;
+    label.style.color = "var(--red)";
+    input.value = "";
+    return;
+  }
+  label.style.color = "";
+  label.textContent = file.name;
+  cacheFileRowText(id).then(() => {
+    refreshAttachmentBar();
+    if (el("panel-3")?.classList.contains("active")) expandReviewAttachmentPanels();
+  });
+  renderSkillTree();
+}
+
+async function readFileAsBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = () => res(r.result.split(",")[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+async function collectFiles() {
+  const files = [];
+  const seen = new Set();
+  const rows = document.querySelectorAll('[id^="file-row-"]');
+  for (const row of rows) {
+    const id    = row.id.replace("file-row-", "");
+    const type  = el(`file-type-${id}`)?.value;
+    const folder = FILE_TYPES[type]?.folder || "references/";
+    const input = el(`file-input-${id}`);
+    let name = row.dataset.cachedName || "";
+    let b64 = "";
+    if (input?.files?.length) {
+      const file = input.files[0];
+      name = file.name;
+      if (row.dataset.cachedText != null && [".md",".txt",".json",".csv"].includes("." + name.split(".").pop().toLowerCase())) {
+        b64 = btoa(unescape(encodeURIComponent(row.dataset.cachedText)));
+      } else {
+        b64 = await readFileAsBase64(file);
+      }
+    } else if (row.dataset.cachedName && row.dataset.cachedText != null) {
+      name = row.dataset.cachedName;
+      b64 = btoa(unescape(encodeURIComponent(row.dataset.cachedText)));
+    } else {
+      continue;
+    }
+    const key = folder + name;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    files.push({ name, folder, content: b64 });
+  }
+  return files;
+}
+
+// ── Evals builder ─────────────────────────────────────────────────────────────
+let evalRowCount = 0;
+
+const PILLARS = [
+  { key: "outcome",    label: "Outcome",    hint: "What should the user get? What's in the response?" },
+  { key: "process",    label: "Process",    hint: "How should the agent approach this? What should it read/check first?" },
+  { key: "style",      label: "Style",      hint: "Format, structure, tone. What should the response look like?" },
+  { key: "efficiency", label: "Efficiency", hint: "What makes this efficient? What should it NOT do unnecessarily?" },
+];
+
+function addEvalRow(ctx) {
+  ctx = ctx || "create";
+  const id  = `${ctx}-${++evalRowCount}`;
+  const num = evalRowCount;
+  const div = document.createElement("div");
+  div.className = "eval-card";
+  div.id = `eval-row-${id}`;
+
+  const pillarsHtml = PILLARS.map(p => `
+    <div class="field" style="margin-bottom:8px">
+      <label style="font-size:12px;font-weight:600">${p.label}
+        <span class="opt" style="font-weight:400"> — ${p.hint}</span>
+      </label>
+      <textarea id="eval-${p.key}-${id}" style="min-height:48px"
+        placeholder="Pass signals (one per line)…"></textarea>
+    </div>`).join("");
+
+  div.innerHTML = `
+    <div class="eval-card-title">
+      <div style="display:flex;gap:8px;align-items:center">
+        <span>Test case ${num}</span>
+        <input type="text" id="eval-name-${id}" placeholder="name-slug  e.g. happy-path-isolated-schema"
+          style="font-size:12px;padding:3px 7px;width:280px">
+      </div>
+      <button class="row-del" onclick="removeRow('eval-row-${id}')" title="Remove">×</button>
+    </div>
+    <div class="field" style="margin-bottom:8px">
+      <label style="font-size:12px">Prompt <span class="opt">(what the user types)</span></label>
+      <textarea id="eval-prompt-${id}" style="min-height:52px"
+        placeholder='e.g. "We want the preprod feature test bed for this MR — long-lived branch, do not touch shared preprod marts."'></textarea>
+    </div>
+    <div class="field" style="margin-bottom:12px">
+      <label style="font-size:12px">Scenario reference <span class="opt">(optional, e.g. S1 — Happy path)</span></label>
+      <input type="text" id="eval-scenario-${id}" placeholder="S1 — Happy path: six-step isolated schema">
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:10px">
+      <p style="font-size:11.5px;font-weight:600;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Four pillars — pass signals</p>
+      ${pillarsHtml}
+    </div>`;
+
+  el(ctx === "review" ? "eval-list-review" : "eval-list").appendChild(div);
+  renderSkillTree();
+}
+
+function collectEvals() {
+  const evals = [];
+  const rows = document.querySelectorAll('[id^="eval-row-"]');
+  let n = 0;
+  for (const row of rows) {
+    const id     = row.id.replace("eval-row-", "");
+    const prompt = el(`eval-prompt-${id}`)?.value.trim();
+    if (!prompt) continue;
+
+    const pillars = {};
+    for (const p of PILLARS) {
+      const signals = (el(`eval-${p.key}-${id}`)?.value || "")
+        .split("\n").map(l => l.trim()).filter(Boolean);
+      pillars[p.key] = { pass_signals: signals.length ? signals : ["—"] };
+    }
+
+    evals.push({
+      id:       n,
+      name:     el(`eval-name-${id}`)?.value.trim()
+                  .toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") || `test-case-${n}`,
+      prompt,
+      scenario: el(`eval-scenario-${id}`)?.value.trim() || "",
+      pillars,
+    });
+    n++;
+  }
+  return evals;
+}
+
+function buildEvalsJson(slug, evals) {
+  return JSON.stringify({
+    skill_name:        slug,
+    eval_spec_version: "1.0",
+    description:       `Eval suite for the ${slug} skill.`,
+    evals: evals.map(e => ({
+      id:   e.id,
+      name: e.name,
+      prompt: e.prompt,
+      expected_output: {
+        ...(e.scenario ? { scenario_ref: e.scenario } : {}),
+        pillars: e.pillars,
+      }
+    }))
+  }, null, 2) + "\n";
+}
+
+function buildEvalsReadme(slug, evals) {
+  const scenarioRows = evals.map((e, i) =>
+    `| S${i+1} — ${e.name.replace(/-/g," ")} | ${e.prompt.slice(0,60)}${e.prompt.length>60?"…":""} |`
+  ).join("\n");
+
+  return [
+    `# Evaluation suite — ${slug}`,
+    "",
+    `Eval cases for the **${slug}** skill.`,
+    "",
+    "## Four pillars (rubric)",
+    "",
+    "| Pillar | Question |",
+    "|--------|----------|",
+    "| **Outcome** | User gets the correct result for this skill. |",
+    "| **Process** | Agent reads relevant context before acting; follows skill procedure. |",
+    "| **Style** | Response is structured, clear, and appropriately formatted. |",
+    "| **Efficiency** | No redundant steps; scoped to what's needed. |",
+    "",
+    "## Scenarios",
+    "",
+    "| Scenario | Prompt summary |",
+    "|----------|----------------|",
+    scenarioRows,
+    "",
+    "## Artifacts",
+    "",
+    "| File | Purpose |",
+    "|------|---------|",
+    "| [evals.json](evals.json) | Machine-readable eval cases (CI: `cli/run-evals.sh`) |",
+    "",
+  ].join("\n");
+}
+
+function removeRow(id) {
+  const rowId = id.replace("file-row-", "");
+  if (activeSupportRowId === rowId) closeSupportEditor();
+  el(id)?.remove();
+  renderSkillTree();
+  refreshAttachmentBar();
+}
+
+function toggleSection(bodyId, iconId) {
+  const body = el(bodyId);
+  const icon = el(iconId);
+  const open = body.style.display === "none";
+  body.style.display = open ? "" : "none";
+  icon.textContent   = open ? "▴ hide" : "▾ show";
+}
+
+// ── Editor helpers — works for both single and split pane ────────────────────
+function getSkillContent() {
+  // Split pane is active when visible
+  if (el("split-pane").style.display !== "none") {
+    return el("skill-preview-split").textContent.trim();
+  }
+  return el("skill-preview").textContent.trim();
+}
+
+function setSkillContent(content) {
+  el("skill-preview").textContent       = content;
+  el("skill-preview-split").textContent = content;
+}
+
+function setSkillPath(path) {
+  el("preview-path").textContent       = path;
+  el("preview-path-split").textContent = path;
+}
+
+function showPRMode() {
+  el("review-header-normal").style.display = "none";
+  el("review-header-pr").style.display     = "";
+  el("split-pane").style.display           = "";
+  el("single-pane").style.display          = "none";
+}
+
+function showNormalMode() {
+  el("review-header-normal").style.display = "";
+  el("review-header-pr").style.display     = "none";
+  el("split-pane").style.display           = "none";
+  el("single-pane").style.display          = "";
+}
+
+let activeTab = "create";
+let loadBy    = "pr";
+let loadedBranch = ""; // set when loaded from a PR branch
+let loadedPrNum = "";
+let loadedPrRepo = ""; // repo that owns the PR API (base); head repo used for file fetch
+
+function switchTab(tab) {
+  activeTab = tab;
+  el("tab-create").classList.toggle("active", tab === "create");
+  el("tab-load").classList.toggle("active",   tab === "load");
+  el("pane-create").style.display = tab === "create" ? "" : "none";
+  el("pane-load").style.display   = tab === "load"   ? "" : "none";
+  el("nav-1-label").textContent   = tab === "create" ? "Skill info" : "Load skill";
+}
+
+function setLoadBy(mode) {
+  loadBy = mode;
+  el("load-by-pr").classList.toggle("active",   mode === "pr");
+  el("load-by-name").classList.toggle("active", mode === "name");
+  el("load-pr-field").style.display   = mode === "pr"   ? "" : "none";
+  el("load-name-field").style.display = mode === "name" ? "" : "none";
+}
+
+
+function gitRefsHeadsUrl(repo, branch) {
+  const path = branch.split("/").map(encodeURIComponent).join("/");
+  return `https://api.github.com/repos/${repo}/git/ref/heads/${path}`;
+}
+
+function contentsRefParam(branch) {
+  return encodeURIComponent(branch);
+}
+
+async function getRemoteContentSha(repo, filePath, branch) {
+  const meta = await gh("GET",
+    `https://api.github.com/repos/${repo}/contents/${filePath}?ref=${contentsRefParam(branch)}`);
+  if (meta && !meta.message && meta.sha) return meta.sha;
+  return null;
+}
+
+async function upsertRepoFile(repo, branch, filePath, contentB64, message) {
+  const sha = await getRemoteContentSha(repo, filePath, branch);
+  const payload = { message, content: contentB64, branch };
+  if (sha) payload.sha = sha;
+  const res = await gh("PUT", `https://api.github.com/repos/${repo}/contents/${filePath}`, payload);
+  if (res.message && !res.content) throw new Error(res.message);
+  return { res, updated: !!sha };
+}
+
+async function branchExistsOnRepo(repo, branch) {
+  if (!repo || !branch) return false;
+  const ref = await gh("GET", gitRefsHeadsUrl(repo, branch));
+  return !!(ref && !ref.message && ref.object?.sha);
+}
+
+async function resolveBranchForUpdate(repo, branchName) {
+  branchName = (branchName || "").trim();
+  if (!branchName) return { error: "Branch name required" };
+
+  const candidates = [];
+  const add = (b) => { if (b && !candidates.includes(b)) candidates.push(b); };
+  add(branchName);
+  if (!branchName.startsWith("skill/")) add(`skill/${branchName}`);
+  add(loadedBranch);
+  add(pushedBranch);
+
+  for (const b of candidates) {
+    if (await branchExistsOnRepo(repo, b)) return { branch: b, tried: candidates };
+  }
+  return {
+    error:
+      `Branch not found on ${repo}. Tried: ${candidates.join(", ")}. ` +
+      `Copy the exact branch from your open PR on GitHub (usually skill/<name>-<timestamp>). ` +
+      `If you have not pushed yet, use "New PR" instead of "Update existing PR".`,
+    tried: candidates,
+  };
+}
+
+async function fetchPullRequest(prNum) {
+  const repos = [cfg.repo, cfg.upstream].filter((r, i, a) => r && a.indexOf(r) === i);
+  let lastErr = "";
+  for (const r of repos) {
+    const pr = await gh("GET", `https://api.github.com/repos/${r}/pulls/${prNum}`);
+    if (pr && !pr.message && pr.number) return { pr, prApiRepo: r };
+    lastErr = pr?.message || lastErr;
+  }
+  throw new Error(
+    `PR #${prNum} not found on ${repos.join(" or ")}${lastErr ? ": " + lastErr : ""}. ` +
+    `Open the PR on your fork or enter the number from the fork URL.`,
+  );
+}
+
+function slugFromBranchName(branch) {
+  if (!branch) return "";
+  const base = branch.replace(/^skill\//, "");
+  const m = base.match(/^(.+)-\d{10,}$/);
+  return m ? m[1] : base.replace(/-\d+$/, "");
+}
+
+function preparePushPanel() {
+  const pathEl = el("push-show-skill-path");
+  if (pathEl) pathEl.textContent = skillMdPath() || "(generate or load a skill first)";
+  const branch = loadedBranch || pushedBranch;
+  if (!branch) return;
+  setMode("update");
+  el("update-branch").value = branch;
+  if (!v("update-msg")) {
+    el("update-msg").value = `skill: update ${slug || "skill"}`;
+  }
+}
+
+async function loadSkill() {
+  const {repo, branch, path} = cfg;
+  const btn = el("load-btn");
+  btn.disabled = true;
+  st("s-load", "Fetching…", "spin");
+  el("load-error").classList.remove("show");
+  loadedBranch = "";
+  loadedPrNum = "";
+  loadedPrRepo = "";
+
+  try {
+    let content = "", detectedSlug = "", fetchedBranch = "", skillFilePath = "";
+
+    if (loadBy === "pr") {
+      const prNum = v("l-pr");
+      if (!prNum) throw new Error("Enter a PR number");
+
+      const { pr, prApiRepo } = await fetchPullRequest(prNum);
+      loadedPrNum = prNum;
+      loadedPrRepo = prApiRepo;
+      fetchedBranch = pr.head.ref;
+      const headRepo = pr.head?.repo?.full_name || repo;
+
+      const branchSlug = slugFromBranchName(fetchedBranch);
+
+      // 3. Try to find the SKILL.md — check common path patterns
+      const skillsFolder = path.replace(/\/?$/, "/");
+      // Try with branchSlug first, then list skills/ to find the right one
+      const tryPaths = [
+        `${skillsFolder}${branchSlug}/SKILL.md`,
+      ];
+      let fileData = null;
+      for (const p of tryPaths) {
+        const r = await gh("GET",
+          `https://api.github.com/repos/${headRepo}/contents/${p}?ref=${contentsRefParam(fetchedBranch)}`);
+        if (!r.message) { fileData = r; skillFilePath = p; break; }
+      }
+      // If not found by slug, list the skills folder on that branch and find changed file
+      if (!fileData) {
+        const tip = await gh("GET", gitRefsHeadsUrl(headRepo, fetchedBranch));
+        const treeSha = tip?.object?.sha;
+        const tree = treeSha
+          ? await gh("GET", `https://api.github.com/repos/${headRepo}/git/trees/${treeSha}?recursive=1`)
+          : { message: tip?.message || "Branch not found" };
+        if (!tree.message && tree.tree) {
+          const skillMd = tree.tree.find(f => f.path.endsWith("/SKILL.md") && f.path.startsWith("skills/"));
+          if (skillMd) {
+            skillFilePath = skillMd.path;
+            fileData = await gh("GET",
+              `https://api.github.com/repos/${headRepo}/contents/${skillMd.path}?ref=${contentsRefParam(fetchedBranch)}`);
+          }
+        }
+      } else {
+        detectedSlug = branchSlug;
+      }
+      if (!fileData || fileData.message) throw new Error(
+        `Could not find SKILL.md on branch "${fetchedBranch}". Check the skills folder path in Setup.`);
+
+      content       = decodeURIComponent(escape(atob(fileData.content.replace(/\n/g, ""))));
+      loadedBranch  = fetchedBranch;
+
+    } else {
+      // Load by skill name from base branch
+      const name = v("l-name");
+      if (!name) throw new Error("Enter a skill name");
+      const skillsFolder = path.replace(/\/?$/, "/");
+      const filePath = `${skillsFolder}${name}/SKILL.md`;
+      const fileData = await gh("GET",
+        `https://api.github.com/repos/${repo}/contents/${filePath}`);
+      if (fileData.message) throw new Error(
+        `Skill "${name}" not found at ${filePath} on branch "${branch}".`);
+      content = decodeURIComponent(escape(atob(fileData.content.replace(/\n/g, ""))));
+      skillFilePath = filePath;
+      detectedSlug = name;
+    }
+
+    if (skillFilePath) {
+      const parsed = parseSkillPathFromRepo(skillFilePath);
+      applyParsedSkillPath(parsed);
+      if (parsed.slug) detectedSlug = parsed.slug;
+    }
+
+    // Parse slug from file content if not already set
+    if (!detectedSlug) {
+      const nm = content.match(/^name:\s*(.+)$/m);
+      if (nm) detectedSlug = nm[1].trim();
+    }
+
+    // Load into editor
+    slug = detectedSlug;
+    setSkillContent(content);
+    setSkillPath(skillMdPath());
+    el("pr-title").value = `skill: update ${slug}`;
+
+    // If loaded from PR, pre-fill update mode
+    if (loadedBranch) {
+      setMode("update");
+      el("update-branch").value = loadedBranch;
+      el("update-msg").value    = `skill: update ${slug}`;
+    } else {
+      setMode("new");
+      el("pr-title").value = `skill: update ${slug}`;
+    }
+
+    // Validate and go to review
+    st("s-load", "");
+    const nm = content.match(/^name:\s*(.+)$/m);
+    const dm = content.match(/^description:\s*>-?\n((?:  .+\n?)*)/m);
+    const bm = content.match(/^---[\s\S]+?---\n([\s\S]*)$/m);
+    const res = await post("/api/validate", {
+      name:        nm ? nm[1].trim() : slug,
+      description: dm ? dm[1].replace(/^  /gm,"").trim() : "",
+      body:        bm ? bm[1] : content,
+    });
+    validationIssues = res.issues || [];
+    renderValidation(validationIssues);
+
+    // Fetch PR comments if loaded from a PR
+    if (loadBy === "pr") {
+      const prNum = v("l-pr");
+      await loadPRComments(prNum);
+      // Fetch and show existing supporting files on the branch
+      await fetchExistingFiles(loadedBranch);
+      // Auto-open the supporting files section so user sees what's there
+      if (existingFiles.length) {
+        el("review-files-body").style.display = "";
+        el("review-files-icon").textContent   = "▴ hide";
+      }
+    } else {
+      hidePRContext();
+    }
+
+    goTo(3); // go straight to Review
+
+  } catch(e) {
+    st("s-load", "");
+    el("load-error").textContent = "✗ " + e.message;
+    el("load-error").classList.add("show");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+
+function liveValidate() {
+  // Quick client-side check (server validates fully on generate)
+  const name  = v("f-name");
+  const desc  = v("f-desc");
+  const nameRe = /^[a-z0-9][a-z0-9-]*[a-z0-9]$|^[a-z0-9]$/;
+  if (name && !nameRe.test(name))
+    showMsg("msg-name","error","Lowercase letters, numbers, hyphens only. Cannot start or end with hyphen.");
+  else if (name && /--/.test(name))
+    showMsg("msg-name","error","No consecutive hyphens (--).");
+  else if (name && name.length > 64)
+    showMsg("msg-name","error","Max 64 characters.");
+  else if (name)
+    showMsg("msg-name","ok","✓ Valid name format");
+  if (desc && desc.length > 1024)
+    showMsg("msg-desc","error","Max 1024 characters.");
+  else if (desc && desc.length > 0)
+    clearMsg("msg-desc");
+}
+
+// ── Step 1→2: Generate + validate ────────────────────────────────────────────
+async function generate() {
+  onSkillCategoryChange();
+  const name = v("f-name"), desc = v("f-desc"), when = v("f-when");
+  if (!name) { st("s-gen","Skill name required","err"); return; }
+  if (!desc) { st("s-gen","Description required","err"); return; }
+
+  const btn = el("gen-btn");
+  btn.disabled = true;
+  st("s-gen","Generating SKILL.md…","spin");
+
+  try {
+    const res = await post("/api/generate", {
+      apiKey: cfg.apiKey,
+      name, description: desc, when,
+      examples:      v("f-examples"),
+      steps:         v("f-steps"),
+      gotchas:       v("f-gotchas"),
+      outputFormat:  v("f-output"),
+      compatibility: v("f-compat"),
+      license:       v("f-license"),
+      skillKind:     v("f-skill-kind") || "generic",
+    });
+
+    slug = res.slug || name.toLowerCase().replace(/\s+/g,"-");
+    setSkillContent(res.skill);
+    setSkillPath(skillMdPath());
+    el("pr-title").value = `skill: add ${slug}`;
+    showNormalMode();
+    renderSkillTree();
+
+    // Show validation
+    validationIssues = res.issues || [];
+    renderValidation(validationIssues);
+    st("s-gen","");
+    goTo(2);
+  } catch(e) {
+    st("s-gen", e.message, "err");
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function reValidate() {
+  const content = getSkillContent();
+  // Parse name/description from edited content
+  const nmMatch = content.match(/^name:\s*(.+)$/m);
+  const dscMatch = content.match(/^description:\s*>-?\n((?:  .+\n?)*)/m);
+  const name_ = nmMatch ? nmMatch[1].trim() : slug;
+  const desc_ = dscMatch ? dscMatch[1].replace(/^  /gm,"").trim() : "";
+  const bodyMatch = content.match(/^---[\s\S]+?---\n([\s\S]*)$/m);
+  const body_ = bodyMatch ? bodyMatch[1] : content;
+  try {
+    const res = await post("/api/validate",{name:name_,description:desc_,body:body_});
+    validationIssues = res.issues || [];
+    renderValidation(validationIssues);
+    goTo(2);
+  } catch(e) { alert("Validation error: " + e.message); }
+}
+
+function renderValidation(issues) {
+  const errors   = issues.filter(i=>i.level==="error");
+  const warnings = issues.filter(i=>i.level==="warning");
+  const hasErr   = errors.length > 0;
+  const hasWarn  = warnings.length > 0;
+
+  // Summary
+  const sum = el("val-summary");
+  sum.className = "val-summary " + (hasErr ? "fail" : hasWarn ? "warn" : "pass");
+  sum.textContent = hasErr
+    ? `✗ ${errors.length} error${errors.length>1?"s":""} — fix before pushing`
+    : hasWarn
+    ? `⚠ ${warnings.length} warning${warnings.length>1?"s":""} — review before pushing`
+    : "✓ Passes agentskills.io specification";
+
+  // Mark nav
+  const nav2 = el("nav-2");
+  nav2.classList.remove("err");
+  if (hasErr) nav2.classList.add("err");
+
+  // Disable/enable next button
+  el("to-review-btn").disabled = hasErr;
+
+  // Items
+  const cont = el("val-results");
+  cont.innerHTML = "";
+
+  if (errors.length) {
+    cont.innerHTML += `<div class="val-title">Errors</div>`;
+    errors.forEach(i => {
+      cont.innerHTML += `<div class="val-item error"><span class="val-icon">✗</span>
+        <span><strong>${i.field}</strong>: ${i.message}</span></div>`;
+    });
+  }
+  if (warnings.length) {
+    cont.innerHTML += `<div class="val-title" style="margin-top:${errors.length?'1rem':'0'}">Warnings</div>`;
+    warnings.forEach(i => {
+      cont.innerHTML += `<div class="val-item warning"><span class="val-icon">⚠</span>
+        <span><strong>${i.field}</strong>: ${i.message}</span></div>`;
+    });
+  }
+  if (!errors.length && !warnings.length) {
+    cont.innerHTML = `<div class="val-item pass"><span class="val-icon">✓</span>
+      All spec checks passed</div>`;
+  }
+}
+
+// ── Step 4: Mode switch ───────────────────────────────────────────────────────
+let pushMode = "new";
+function setMode(mode) {
+  pushMode = mode;
+  el("mode-new").classList.toggle("active", mode === "new");
+  el("mode-update").classList.toggle("active", mode === "update");
+  el("new-pr-fields").style.display    = mode === "new"    ? "" : "none";
+  el("update-pr-fields").style.display = mode === "update" ? "" : "none";
+  el("push-btn").textContent = mode === "new"
+    ? "Push skill & open PR →" : "Update branch →";
+  el("push-checklist").style.display = "none";
+  el("push-steps").innerHTML = "";
+  el("success-box").classList.remove("show");
+  el("error-box").classList.remove("show");
+}
+
+function pushDispatch() {
+  if (pushMode === "new") pushToPR(); else updateExistingBranch();
+}
+
+// ── Step helpers ──────────────────────────────────────────────────────────────
+function pstep(msg) {
+  const d = document.createElement("div");
+  d.className = "val-item warning";
+  d.innerHTML = `<span class="val-icon">…</span><span>${msg}</span>`;
+  el("push-steps").appendChild(d); return d;
+}
+function pdone(d, msg) {
+  d.className = "val-item pass";
+  d.querySelector(".val-icon").textContent = "✓";
+  d.querySelector("span:last-child").textContent = msg;
+}
+function pfail(msg) {
+  const d = pstep(msg); d.className = "val-item error";
+  d.querySelector(".val-icon").textContent = "✗";
+  el("error-box").textContent = "✗ " + msg;
+  el("error-box").classList.add("show");
+}
+function prepPush() {
+  el("push-checklist").style.display = "block";
+  el("success-box").classList.remove("show");
+  el("error-box").classList.remove("show");
+  el("push-btn").disabled = true;
+  el("push-steps").innerHTML = "";
+}
+
+// ── Step 4a: New PR ───────────────────────────────────────────────────────────
+async function pushToPR() {
+  const content   = getSkillContent();
+  const prTitle   = v("pr-title") || `skill: add ${slug}`;
+  const prDesc    = v("pr-desc");
+  const author    = v("pr-author") || "contributor";
+  const newBranch = `skill/${slug}-${Date.now()}`;
+  const skillsFolder = normalizePathPrefix(cfg.path);
+  const skillPath = skillMdPath();
+  const {repo, branch, upstream} = cfg;
+
+  // ── Pre-push checks ────────────────────────────────────────────────────────
+  if (!repo) {
+    pfail("No contribution repo configured — go to Setup and re-run fork detection.");
+    return;
+  }
+  if (!content.trim()) {
+    pfail("SKILL.md is empty — go back to Review and generate or load a skill first.");
+    return;
+  }
+  if (upstream && repo === upstream) {
+    pfail(`You're trying to push directly to the upstream repo (${upstream}). ` +
+          `Push to your fork instead. Go to Setup and re-run fork detection.`);
+    return;
+  }
+
+  // Collect supporting files and evals before starting
+  const supportFiles = await collectFiles();
+  const evals        = collectEvals();
+
+  prepPush();
+  try {
+    let s = pstep(`Connecting to ${repo} (branch: ${branch})…`);
+    const ref = await gh("GET",`https://api.github.com/repos/${repo}/git/ref/heads/${branch}`);
+    if (ref.message) {
+      const hint = ref.message === "Not Found"
+        ? `Branch "${branch}" not found in ${repo}. Check: ` +
+          `(1) your fork exists and has this branch, ` +
+          `(2) base branch name is correct (currently "${branch}"), ` +
+          `(3) your token has repo access. ` +
+          `Try clicking "Edit setup" in the sidebar and re-running setup.`
+        : ref.message;
+      throw new Error(hint);
+    }
+    pdone(s, `Connected → ${repo} (${branch})`);
+
+    s = pstep("Creating branch…");
+    const br = await gh("POST",`https://api.github.com/repos/${repo}/git/refs`,
+      {ref:`refs/heads/${newBranch}`, sha:ref.object.sha});
+    if (br.message && !br.ref) throw new Error(br.message);
+    pdone(s, `Branch: ${newBranch}`);
+
+    // Commit SKILL.md
+    s = pstep(`Committing SKILL.md…`);
+    const fc = await gh("PUT",`https://api.github.com/repos/${repo}/contents/${skillPath}`,{
+      message:`skill: add ${slug} (by ${author})`,
+      content: btoa(unescape(encodeURIComponent(content))), branch: newBranch
+    });
+    if (fc.message && !fc.content) throw new Error(fc.message);
+    pdone(s, "SKILL.md committed");
+
+    // Commit supporting files
+    for (const f of supportFiles) {
+      s = pstep(`Uploading ${f.name}…`);
+      const fp = skillsFolder + `${slug}/${f.folder}${f.name}`;
+      const { updated } = await upsertRepoFile(
+        repo, newBranch, fp, f.content, `skill: add ${f.folder}${f.name}`);
+      pdone(s, `${updated ? "Updated" : "Added"} ${f.folder}${f.name}`);
+    }
+
+    // Commit evals if provided
+    if (evals.length) {
+      s = pstep("Committing evals…");
+      const evalsBase = skillsFolder + `${slug}/evals/`;
+      const filesToCommit = [
+        { path: evalsBase + "evals.json",    content: btoa(unescape(encodeURIComponent(buildEvalsJson(slug, evals)))) },
+        { path: evalsBase + "README.md",  content: btoa(unescape(encodeURIComponent(buildEvalsReadme(slug, evals)))) },
+      ];
+      for (const ef of filesToCommit) {
+        const er = await gh("PUT",`https://api.github.com/repos/${repo}/contents/${ef.path}`,{
+          message:`skill: add evals for ${slug}`,
+          content: ef.content, branch: newBranch
+        });
+        if (er.message && !er.content) throw new Error(er.message);
+      }
+      pdone(s, `${evals.length} test case(s) committed`);
+    }
+
+    s = pstep("Opening pull request…");
+    const filesSummary = supportFiles.length
+      ? `\n**Supporting files:** ${supportFiles.map(f=>f.name).join(", ")}`  : "";
+    const evalsSummary = evals.length
+      ? `\n**Evals:** ${evals.length} test case(s)` : "";
+    const body = [
+      prDesc ? prDesc + "\n\n---\n" : "",
+      `**Skill:** \`${slug}\` | **By:** ${author}`,
+      filesSummary, evalsSummary,
+      "\n### Reviewer checklist",
+      `- [ ] \`bash cli/validate-skill.sh ${slug}\``,
+      `- [ ] \`bash cli/run-evals.sh ${slug}\``,
+      "- [ ] name: matches directory",
+      "_Submitted via Skill Composer — agentskills.io compliant_"
+    ].join("\n");
+
+    const pr = await gh("POST",`https://api.github.com/repos/${repo}/pulls`,
+      {title:prTitle, body, head:newBranch, base:branch});
+    if (pr.message && !pr.html_url) throw new Error(pr.message);
+    pdone(s, "Pull request opened");
+
+    el("success-box").innerHTML = `✓ Skill pushed! <a href="${pr.html_url}" target="_blank" rel="noopener">Open PR ↗</a>
+      <br><span style="font-size:12px;color:var(--green);opacity:.8">← Go to Test to install this branch locally for full testing</span>`;
+    pushedBranch = newBranch;
+    loadedBranch = newBranch;
+    el("update-branch").value = newBranch;
+    updateLocalInstallPanel();
+    preparePushPanel();
+    el("success-box").classList.add("show");
+  } catch(e) { pfail(e.message); }
+  finally { el("push-btn").disabled = false; }
+}
+
+// ── Step 4b: Update existing branch ──────────────────────────────────────────
+async function updateExistingBranch() {
+  const content    = getSkillContent();
+  let branchName = v("update-branch");
+  const commitMsg  = v("update-msg") || `skill: update ${slug}`;
+  const skillPath  = skillMdPath();
+  const {repo}     = cfg;
+
+  if (!branchName) { st("s-push","Branch name required","err"); return; }
+  if (!repo) { pfail("No contribution repo configured — go to Setup."); return; }
+
+  // Collect new files, replaces, and evals before starting
+  const newFiles     = await collectFiles();
+  const replaces     = await collectPendingReplaces();
+  const evals        = collectEvals();
+  const skillsFolder = normalizePathPrefix(cfg.path);
+
+  prepPush();
+  try {
+    let s = pstep(`Verifying branch on ${repo}…`);
+    const resolved = await resolveBranchForUpdate(repo, branchName);
+    if (resolved.error) throw new Error(resolved.error);
+    branchName = resolved.branch;
+    el("update-branch").value = branchName;
+    pdone(s, `Branch: ${branchName}`);
+
+    s = pstep("Scanning branch for existing supporting files…");
+    await fetchExistingFiles(branchName);
+    pdone(s, existingFiles.length
+      ? `${existingFiles.length} existing file(s) on branch`
+      : "No prior supporting files on branch");
+
+    // Get current SKILL.md SHA
+    s = pstep(`Fetching SKILL.md from ${repo}…`);
+    const existing = await gh("GET",
+      `https://api.github.com/repos/${repo}/contents/${skillPath}?ref=${contentsRefParam(branchName)}`);
+    if (existing.message) throw new Error(
+      existing.message === "Not Found"
+        ? `SKILL.md not found at "${skillPath}" on branch "${branchName}" in ${repo}. ` +
+          `Check: (1) skills folder path in Setup matches the PR, ` +
+          `(2) you loaded the correct skill, (3) token can write to ${repo}.`
+        : existing.message.includes("No commit found")
+          ? `Branch "${branchName}" was not found on ${repo}. Use the exact branch from your PR ` +
+            `(often skill/<name>-<timestamp>), or push with "New PR" first.`
+          : existing.message);
+    pdone(s, `Got current file (sha: ${existing.sha.slice(0,7)})`);
+
+    // Update SKILL.md
+    s = pstep("Pushing updated SKILL.md…");
+    const res = await gh("PUT",`https://api.github.com/repos/${repo}/contents/${skillPath}`,{
+      message: commitMsg,
+      content: btoa(unescape(encodeURIComponent(content))),
+      sha: existing.sha, branch: branchName
+    });
+    if (res.message && !res.content) throw new Error(res.message);
+    pdone(s, "SKILL.md updated");
+
+    // Delete marked files
+    for (const path of filesToDelete) {
+      s = pstep(`Deleting ${path.split("/").pop()}…`);
+      const ef = existingFiles.find(f => f.path === path);
+      if (!ef) { pdone(s, "skipped (not found)"); continue; }
+      const dr = await gh("DELETE",`https://api.github.com/repos/${repo}/contents/${path}`,{
+        message: `skill: remove ${path.split("/").pop()}`,
+        sha: ef.sha, branch: branchName
+      });
+      if (dr.message && !dr.commit) throw new Error(dr.message);
+      pdone(s, `Deleted ${path.split("/").pop()}`);
+    }
+
+    // Replace existing files
+    for (const r of replaces) {
+      s = pstep(`Replacing ${r.relPath}…`);
+      const ef  = existingFiles.find(f => f.sha === r.sha);
+      const fp  = skillsFolder + `${slug}/${r.relPath.replace(/[^/]+$/, r.name)}`;
+      const sha = ef?.sha || await getRemoteContentSha(repo, fp, branchName);
+      if (!sha) throw new Error(`Cannot replace ${r.relPath}: file not found on branch.`);
+      const rr  = await gh("PUT",`https://api.github.com/repos/${repo}/contents/${fp}`,{
+        message: `skill: replace ${r.name}`,
+        content: r.content,
+        sha,
+        branch: branchName
+      });
+      if (rr.message && !rr.content) throw new Error(rr.message);
+      pdone(s, `Replaced with ${r.name}`);
+    }
+
+    // Upload or update supporting files (upsert — sha required if file exists)
+    for (const f of newFiles) {
+      s = pstep(`Uploading ${f.name}…`);
+      const fp = skillsFolder + `${slug}/${f.folder}${f.name}`;
+      const prior = existingFiles.find(x => x.path === fp);
+      const msg = prior ? `skill: update ${f.name}` : `skill: add ${f.name}`;
+      const { updated } = await upsertRepoFile(repo, branchName, fp, f.content, msg);
+      pdone(s, `${updated ? "Updated" : "Added"} ${f.folder}${f.name}`);
+    }
+
+    // Commit evals if provided
+    if (evals.length) {
+      s = pstep("Committing evals…");
+      const evalsBase = skillsFolder + `${slug}/evals/`;
+      for (const ef of [
+        { path: evalsBase+"evals.json",   content: btoa(unescape(encodeURIComponent(buildEvalsJson(slug, evals)))) },
+        { path: evalsBase+"README.md", content: btoa(unescape(encodeURIComponent(buildEvalsReadme(slug, evals)))) },
+      ]) {
+        // Check if file already exists to get SHA for update
+        const check = await gh("GET",`https://api.github.com/repos/${repo}/contents/${ef.path}?ref=${contentsRefParam(branchName)}`);
+        const payload = { message:`skill: update evals for ${slug}`, content:ef.content, branch:branchName };
+        if (!check.message) payload.sha = check.sha;
+        const er = await gh("PUT",`https://api.github.com/repos/${repo}/contents/${ef.path}`, payload);
+        if (er.message && !er.content) throw new Error(er.message);
+      }
+      pdone(s, `${evals.length} test case(s) committed`);
+    }
+
+    // Find open PR
+    s = pstep("Looking up open PR…");
+    const owner = repo.split("/")[0];
+    const prs = await gh("GET",
+      `https://api.github.com/repos/${repo}/pulls?head=${encodeURIComponent(owner+":"+branchName)}&state=open`);
+    const pr = Array.isArray(prs) && prs[0];
+    if (pr) {
+      pdone(s, "PR found and updated automatically");
+      el("success-box").innerHTML = `✓ Updated! PR reflects your changes: <a href="${pr.html_url}" target="_blank" rel="noopener">View PR ↗</a>`;
+    } else {
+      pdone(s, "Branch updated (no open PR found)");
+      el("success-box").innerHTML = "✓ Branch updated successfully.";
+    }
+    el("success-box").classList.add("show");
+  } catch(e) { pfail(e.message); }
+  finally { el("push-btn").disabled = false; }
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+const el  = id => document.getElementById(id);
+const v   = id => el(id).value.trim();
+
+function st(id, msg, type="") {
+  const e = el(id); e.textContent = msg;
+  e.className = "status" + (type ? " " + type : "");
+}
+function showMsg(id, type, msg) {
+  const e = el(id);
+  const cls = type === "ok" ? "ok" : type === "error" ? "error" : "warning";
+  e.innerHTML = `<div class="field-msg ${cls}">${msg}</div>`;
+}
+function clearMsg(id) { el(id).innerHTML = ""; }
+
+async function post(path, body) {
+  const r = await fetch(path, {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify(body)
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.error || d.message || `HTTP ${r.status}`);
+  return d;
+}
+async function gh(method, url, body) {
+  return post("/api/github", {token:cfg.token, method, url, body});
+}
+function copySkill() {
+  navigator.clipboard.writeText(getSkillContent())
+    .then(()=>{ const b=event.target; b.textContent="Copied!"; setTimeout(()=>b.textContent="Copy",1500); });
+}
+
+function copyInstall() {
+  const up = cfg.upstream || cfg.repo;
+  const text = [
+    `# Install skills from upstream`,
+    `git clone https://github.com/${up}.git`,
+    `cd ${up.split("/")[1]}`,
+    `bash cli/install.sh`,
+    ``,
+    `# Keep up to date`,
+    `git pull origin main`,
+    `bash cli/install.sh`,
+  ].join("\n");
+  navigator.clipboard.writeText(text).then(() => {
+    st("s-copy","Copied!","ok");
+    setTimeout(()=>st("s-copy",""), 2000);
+  });
+}
+
+// ── PR review comments ────────────────────────────────────────────────────────
+let commentsOpen = true;
+
+async function loadPRComments(prNum) {
+  const prRepo = loadedPrRepo || cfg.repo;
+  try {
+    // Fetch PR metadata, general comments, and inline review comments in parallel
+    const [prData, issueComments, reviewComments, reviews] = await Promise.all([
+      gh("GET", `https://api.github.com/repos/${prRepo}/pulls/${prNum}`),
+      gh("GET", `https://api.github.com/repos/${prRepo}/issues/${prNum}/comments`),
+      gh("GET", `https://api.github.com/repos/${prRepo}/pulls/${prNum}/comments`),
+      gh("GET", `https://api.github.com/repos/${prRepo}/pulls/${prNum}/reviews`),
+    ]);
+
+    // Show PR split pane
+    showPRMode();
+    el("pr-banner-title").textContent = `📋 PR #${prNum}: ${prData.title || ""}`;
+    el("pr-banner-link").href = prData.html_url || "#";
+
+    // Combine all comments into one list, sorted by date
+    const allComments = [];
+
+    // General issue-style comments
+    if (Array.isArray(issueComments)) {
+      issueComments.forEach(c => allComments.push({
+        type:   "comment",
+        author: c.user?.login || "unknown",
+        time:   c.created_at,
+        body:   c.body || "",
+        file:   null,
+      }));
+    }
+
+    // Inline code review comments
+    if (Array.isArray(reviewComments)) {
+      reviewComments.forEach(c => allComments.push({
+        type:   "inline",
+        author: c.user?.login || "unknown",
+        time:   c.created_at,
+        body:   c.body || "",
+        file:   c.path || null,
+      }));
+    }
+
+    // Review decisions with body text (approved/changes requested + comment)
+    if (Array.isArray(reviews)) {
+      reviews.forEach(r => {
+        if (r.body && r.body.trim()) {
+          allComments.push({
+            type:   "review",
+            author: r.user?.login || "unknown",
+            time:   r.submitted_at,
+            body:   r.body,
+            file:   null,
+            state:  r.state,
+          });
+        }
+      });
+    }
+
+    allComments.sort((a, b) => new Date(a.time) - new Date(b.time));
+    renderComments(allComments);
+
+  } catch(e) {
+    // Non-fatal — still show the editor, just no comments
+    hidePRContext();
+  }
+}
+
+function renderComments(comments) {
+  const body  = el("comments-body");
+  const count = el("comments-count");
+
+  if (!comments.length) {
+    count.textContent = "No comments";
+    body.innerHTML = `<div class="no-comments">No review comments yet on this PR.</div>`;
+    return;
+  }
+
+  count.textContent = `${comments.length} comment${comments.length > 1 ? "s" : ""}`;
+
+  body.innerHTML = comments.map(c => {
+    const time = new Date(c.time).toLocaleString(undefined, {
+      month:"short", day:"numeric", hour:"2-digit", minute:"2-digit"
+    });
+    const typeLabel = c.type === "review"
+      ? `<span class="comment-type review">${c.state || "review"}</span>`
+      : c.type === "inline"
+      ? `<span class="comment-type">inline</span>`
+      : "";
+    const fileTag = c.file
+      ? `<div class="comment-file">${c.file}</div>`
+      : "";
+    return `
+      <div class="comment-item">
+        <div class="comment-meta">
+          <span class="comment-author">@${c.author}</span>
+          <span class="comment-time">${time}</span>
+          ${typeLabel}
+        </div>
+        ${fileTag}
+        <div class="comment-body">${c.body.replace(/</g,"&lt;").replace(/>/g,"&gt;")}</div>
+      </div>`;
+  }).join("");
+}
+
+function toggleComments() {
+  commentsOpen = !commentsOpen;
+  el("comments-body").style.display = commentsOpen ? "" : "none";
+  el("comments-toggle-label").textContent =
+    (commentsOpen ? "▾" : "▸") + " Review comments";
+}
+
+function hidePRContext() {
+  showNormalMode();
+}
+
+// ── Skill index upload (Setup panel) ─────────────────────────────────────────
+async function onSkillIndexChosen() {
+  const input = el("skill-index-upload");
+  const file  = input?.files?.[0];
+  if (!file) return;
+
+  el("skill-index-filename").textContent = file.name;
+  const statusEl = el("skill-index-status");
+  statusEl.innerHTML = '<span class="status spin">Uploading…</span>';
+
+  try {
+    // Read as text, validate it's valid JSON with skills array
+    const text = await file.text();
+    const data = JSON.parse(text);
+    const skills = Array.isArray(data) ? data : (data.skills || []);
+    if (!skills.length) throw new Error("No skills found in file");
+
+    // POST to server to save
+    const res = await fetch("/api/upload-skill-index", {
+      method:  "POST",
+      headers: { "Content-Type": "application/json" },
+      body:    JSON.stringify({ content: text }),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.error || "Upload failed");
+
+    statusEl.innerHTML =
+      `<span class="status ok">✓ ${skills.length} skills loaded — browser ready</span>`;
+
+    // Reload the index in the browser
+    indexLoaded = false;
+    await fetchSkillIndex(true);
+
+  } catch(e) {
+    statusEl.innerHTML =
+      `<span class="status err">✗ ${e.message}</span>`;
+  }
+}
+
+// ── Skill browser ─────────────────────────────────────────────────────────────
+let skillIndex     = [];
+let indexLoaded    = false;
+let indexLoading   = false;
+let filteredSkills = [];
+
+async function fetchSkillIndex(force) {
+  if (indexLoaded && !force) return;
+  if (indexLoading) return;
+  indexLoading = true;
+  el("browser-loading-msg").textContent = "Loading SKILL_INDEX.json…";
+
+  try {
+    const res  = await fetch("/api/skill-index");
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Failed to load index");
+
+    skillIndex  = Array.isArray(data) ? data : (data.skills || []);
+    indexLoaded = true;
+
+    // Sidebar badge
+    el("browse-count").textContent = skillIndex.length;
+    el("browser-total").textContent = `${skillIndex.length} skills`;
+    const cats = [...new Set(skillIndex.map(s=>s.category).filter(Boolean))].sort();
+    el("browser-subtitle").textContent =
+      `${skillIndex.length} skills · ${cats.length} categories`;
+
+    // Category dropdown
+    const catSel = el("browser-cat");
+    catSel.innerHTML = '<option value="">All categories</option>';
+    cats.forEach(c => {
+      const o = document.createElement("option");
+      o.value = c; o.textContent = c; catSel.appendChild(o);
+    });
+
+    // Env filter
+    const envs = [...new Set(skillIndex.flatMap(s=>s.requires_env||[]).filter(Boolean))].sort();
+    const envSel = el("browser-env");
+    envSel.innerHTML = '<option value="">Any environment</option>';
+    envs.forEach(e => {
+      const o = document.createElement("option");
+      o.value = e; o.textContent = e; envSel.appendChild(o);
+    });
+
+    // Live-update skill category selector
+    window.HUB_SKILL_CATEGORIES = cats;
+    initSkillCategorySelect();
+
+    filteredSkills = [...skillIndex];
+    renderSkillCards();
+
+  } catch(e) {
+    el("browser-loading-msg").textContent =
+      "Failed to load: " + e.message +
+      " — drop a fresh SKILL_INDEX.json into app/data/ and restart the server.";
+  } finally {
+    indexLoading = false;
+  }
+}
+
+function openBrowser() {
+  el("skill-browser-overlay").style.display = "flex";
+  document.body.style.overflow = "hidden";
+  fetchSkillIndex(false);
+  setTimeout(() => el("browser-search").focus(), 50);
+}
+
+function closeBrowser() {
+  el("skill-browser-overlay").style.display = "none";
+  document.body.style.overflow = "";
+}
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && el("skill-browser-overlay").style.display !== "none")
+    closeBrowser();
+});
+
+function filterSkills() {
+  const q   = el("browser-search").value.trim().toLowerCase();
+  const cat = el("browser-cat").value;
+  const env = el("browser-env").value;
+
+  filteredSkills = skillIndex.filter(s => {
+    if (cat && s.category !== cat) return false;
+    if (env && !(s.requires_env||[]).includes(env)) return false;
+    if (!q) return true;
+    return (
+      s.name.toLowerCase().includes(q) ||
+      (s.description||"").toLowerCase().includes(q) ||
+      (s.triggers||[]).some(t => t.toLowerCase().includes(q))
+    );
+  });
+
+  el("browser-match-count").textContent =
+    (q||cat||env) ? `${filteredSkills.length} of ${skillIndex.length}` : "";
+  renderSkillCards();
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function renderSkillCards() {
+  const grid = el("browser-grid");
+  if (!indexLoaded) return;
+  if (!filteredSkills.length) {
+    grid.innerHTML = '<div class="browser-empty">No skills match your search.</div>';
+    return;
+  }
+  grid.innerHTML = filteredSkills.map((s,i) => {
+    const triggers = (s.triggers||[]).slice(0,4)
+      .map(t=>`<span class="skill-trigger-tag">${escHtml(t.slice(0,40))}</span>`).join("");
+    const envs = (s.requires_env||[])
+      .map(e=>`<span class="skill-env-tag">⚙ ${escHtml(e)}</span>`).join("");
+    const sj = JSON.stringify(s.name);
+    const pj = JSON.stringify(s.path||"");
+    return `<div class="skill-card">
+      <div class="skill-card-top">
+        <div class="skill-card-name">${escHtml(s.name)}</div>
+        <span class="skill-cat-badge">${escHtml(s.category||"")}</span>
+      </div>
+      <div class="skill-desc" title="${escHtml(s.description||"")}">${escHtml(s.description||"")}</div>
+      ${triggers?`<div class="skill-triggers">${triggers}</div>`:""}
+      ${envs?`<div class="skill-env-row">${envs}</div>`:""}
+      <div class="skill-path">${escHtml(s.path||"")}</div>
+      <div class="skill-actions">
+        <button class="btn btn-sm btn-primary" onclick="loadSkillFromBrowser(${sj},${pj})">✏ Load &amp; edit</button>
+        <button class="btn btn-sm" onclick="previewSkillCard(${sj})">👁 Preview</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+async function loadSkillFromBrowser(skillName, skillPath) {
+  const parts = (skillPath||"").split("/");
+  const derivedSlug = parts.length >= 3 ? parts[parts.length-2] : skillName;
+  closeBrowser();
+  goTo(1);
+  switchTab("load");
+  setLoadBy("name");
+  el("l-name").value = derivedSlug;
+  await loadSkill();
+}
+
+async function previewSkillCard(skillName) {
+  const s = skillIndex.find(sk => sk.name === skillName);
+  if (!s) return;
+  const triggers = (s.triggers||[]).map(t => `• ${t}`).join("\n");
+  const envs     = (s.requires_env||[]).join(", ") || "none";
+  const content  =
+    `Name:        ${s.name}\n` +
+    `Category:    ${s.category}\n` +
+    `Path:        ${s.path}\n` +
+    `Requires:    ${envs}\n\n` +
+    `Description:\n${s.description||""}\n\n` +
+    `Triggers:\n${triggers||"(none)"}`;
+  const w = window.open("","_blank","width=660,height=520,scrollbars=yes");
+  w.document.write(`<html><head><title>${skillName}</title>
+    <style>body{font-family:monospace;font-size:12px;line-height:1.7;
+      white-space:pre-wrap;padding:1.5rem;background:#111;color:#ccc;margin:0}</style>
+    </head><body>${content.replace(/</g,"&lt;")}</body></html>`);
+  w.document.close();
+}
+
+// ── Duplicate detection ───────────────────────────────────────────────────────
+function checkDuplicate(slug) {
+  const warn = el("duplicate-warn");
+  if (!warn) return;
+  if (!indexLoaded || !slug) { warn.style.display="none"; return; }
+  const exists = skillIndex.find(s => s.name === slug);
+  if (exists) {
+    warn.style.display = "block";
+    warn.dataset.slug  = slug;
+    warn.dataset.path  = exists.path || "";
+  } else {
+    warn.style.display = "none";
+  }
+}
+
+async function loadExistingFromDuplicate(e) {
+  e.preventDefault();
+  const slug = el("duplicate-warn").dataset.slug;
+  if (!slug) return;
+  switchTab("load");
+  setLoadBy("name");
+  el("l-name").value = slug;
+  await loadSkill();
+}
+
+// ── IDE Engine — Monaco editor + AI chat ────────────────────────────────────
+// Simple: one file (SKILL.md), Monaco for editing, AI chat sidebar.
+// Monaco from CDN with plain textarea fallback.
+
+function debounce(fn, ms) {
+  let timer;
+  return function (...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), ms);
+  };
+}
+
+let monacoEditor = null;
+let monacoReady  = false;
+let ideAiHistory = []; // [{role, content}]
+
+// ── Monaco init (called when Review panel opens) ──────────────────────────────
+function initIDE() {
+  if (monacoReady) return;
+  if (typeof require === 'undefined') { useTextareaFallback(); return; }
+
+  const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs' }});
+
+  require(['vs/editor/editor.main'], () => {
+    monaco.editor.defineTheme('sc-dark', {
+      base: 'vs-dark', inherit: true, rules: [],
+      colors: { 'editor.background':'#1c1b19', 'editor.foreground':'#f0ede6',
+        'editorLineNumber.foreground':'#46453f', 'editor.lineHighlightBackground':'#222220',
+        'editorWidget.background':'#1c1b19' }
+    });
+
+    const content = el('skill-preview').value || '';
+    monacoEditor = monaco.editor.create(el('monaco-container'), {
+      value: content,
+      language: 'markdown',
+      theme: isDark ? 'sc-dark' : 'vs',
+      automaticLayout: true,
+      minimap: { enabled: false },
+      lineNumbers: 'on',
+      wordWrap: 'on',
+      fontSize: 13,
+      fontFamily: '"SF Mono", Menlo, Consolas, monospace',
+      scrollBeyondLastLine: false,
+      padding: { top: 12, bottom: 12 },
+    });
+
+    // Sync Monaco → textarea on change; debounced validate
+    monacoEditor.onDidChangeModelContent(debounce(() => {
+      el('skill-preview').value = monacoEditor.getValue();
+      ideValidate();
+    }, 900));
+
+    // Show "AI edit" button when text is selected
+    monacoEditor.onDidChangeCursorSelection(e => {
+      const sel = monacoEditor.getSelection();
+      const btn = el('ide-ai-edit-btn');
+      if (btn) btn.style.display = (sel && !sel.isEmpty()) ? '' : 'none';
+    });
+
+    monacoReady = true;
+    el('skill-preview').style.display  = 'none';
+    el('monaco-container').style.display = '';
+    ideValidate();
+  });
+
+  // Fallback after 6s if CDN unreachable
+  setTimeout(() => { if (!monacoReady) useTextareaFallback(); }, 6000);
+}
+
+function useTextareaFallback() {
+  el('monaco-container').style.display = 'none';
+  el('skill-preview').style.display    = '';
+  el('skill-preview').oninput = debounce(ideValidate, 900);
+  st('ide-status-text', 'Editor (Monaco unavailable)', '');
+}
+
+// ── Content get/set ───────────────────────────────────────────────────────────
+function getSkillContent() {
+  if (monacoReady && monacoEditor) return monacoEditor.getValue().trim();
+  return el('skill-preview').value.trim();
+}
+
+function setSkillContent(content) {
+  el('skill-preview').value = content;
+  if (monacoReady && monacoEditor) monacoEditor.setValue(content);
+}
+
+function setSkillPath(path) {
+  const p = el('preview-path'); if (p) p.textContent = path;
+}
+
+function copySkill() {
+  navigator.clipboard.writeText(getSkillContent())
+    .then(() => { st('ide-status-text','Copied!','ok'); setTimeout(()=>st('ide-status-text',''),1500); });
+}
+
+// ── PR mode / normal mode ─────────────────────────────────────────────────────
+function showPRMode() {
+  const h = el('review-header-pr'); if (h) h.style.display = '';
+}
+function showNormalMode() {
+  const h = el('review-header-pr'); if (h) h.style.display = 'none';
+}
+
+// ── PR comments → inject into AI chat ────────────────────────────────────────
+async function loadPRComments(prNum) {
+  const {repo} = cfg;
+  if (!repo) return;
+  try {
+    const [prData, issueComments, reviewComments, reviews] = await Promise.all([
+      gh("GET", `https://api.github.com/repos/${repo}/pulls/${prNum}`),
+      gh("GET", `https://api.github.com/repos/${prRepo}/issues/${prNum}/comments`),
+      gh("GET", `https://api.github.com/repos/${prRepo}/pulls/${prNum}/comments`),
+      gh("GET", `https://api.github.com/repos/${prRepo}/pulls/${prNum}/reviews`),
+    ]);
+    if (prData.html_url) {
+      el('pr-banner-link').href = prData.html_url;
+      el('pr-banner-title').textContent = `📋 PR #${prNum}: ${prData.title || ''}`;
+    }
+    const all = [];
+    (issueComments || []).forEach(c => all.push(`**@${c.user?.login}**: ${c.body}`));
+    (reviewComments || []).forEach(c => all.push(`**@${c.user?.login}** (inline on \`${c.path}\`): ${c.body}`));
+    (reviews || []).forEach(r => { if (r.body?.trim()) all.push(`**@${r.user?.login}** [${r.state}]: ${r.body}`); });
+    if (all.length) {
+      appendChatMsg('ai', 'PR review comments:\n\n' + all.join('\n\n') + '\n\n---\nHow would you like to address these?');
+    }
+  } catch(e) { /* non-fatal */ }
+}
+
+// Backward compat stubs (old PR split-pane code may call these)
+function renderComments(comments) {
+  if (!comments?.length) return;
+  const msg = comments.map(c => `**@${c.author}** [${c.type}]: ${c.body}`).join('\n\n');
+  appendChatMsg('ai', 'PR comments:\n\n' + msg);
+}
+function toggleComments() {}
+
+// ── Skill tree (read-only, used by renderSkillTree) ───────────────────────────
+// renderSkillTree writes to #skill-tree which no longer exists; make it a no-op
+// The tree was nice but not essential — file upload list serves the same purpose
+function renderSkillTree() { /* no-op: tree removed to simplify */ }
+
+// ── Real-time validation ──────────────────────────────────────────────────────
+const ideValidate = debounce(async () => {
+  const content = getSkillContent();
+  if (!content) return;
+  try {
+    const res = await post('/api/validate', {
+      skillMarkdown: content,
+      slug: (slug || '').trim() || undefined,
+    });
+    const issues = res.issues || [];
+    validationIssues = issues;
+    const errors   = issues.filter(i => i.level === 'error');
+    const warnings = issues.filter(i => i.level === 'warning');
+    const sum = el('ide-val-summary');
+    if (sum) {
+      if (errors.length)   sum.innerHTML = `<span class="ide-status-err">✗ ${errors.length} error${errors.length>1?'s':''}</span>`;
+      else if (warnings.length) sum.innerHTML = `<span class="ide-status-warn">⚠ ${warnings.length} warning${warnings.length>1?'s':''}</span>`;
+      else sum.innerHTML = `<span class="ide-status-ok">✓ Spec valid</span>`;
+    }
+    // Monaco markers
+    if (monacoReady && monacoEditor) {
+      const model = monacoEditor.getModel();
+      const lines = content.split('\n');
+      const markers = issues.map(issue => {
+        let ln = 1;
+        if (issue.field === 'name') ln = lines.findIndex(l => l.startsWith('name:')) + 1 || 1;
+        if (issue.field === 'description') ln = lines.findIndex(l => l.startsWith('description:')) + 1 || 1;
+        return {
+          severity: issue.level === 'error' ? monaco.MarkerSeverity.Error : monaco.MarkerSeverity.Warning,
+          message: `[${issue.field}] ${issue.message}`,
+          startLineNumber: ln, endLineNumber: ln, startColumn: 1, endColumn: 200,
+        };
+      });
+      monaco.editor.setModelMarkers(model, 'agentskills', markers);
+    }
+  } catch(e) {}
+}, 1000);
+
+function ideRevalidate() { ideValidate(); }
+function reValidate() { ideValidate(); goTo(2); }
+
+// ── AI inline edit (on text selection) ───────────────────────────────────────
+async function aiEditSelection() {
+  if (!monacoReady || !monacoEditor) return;
+  const sel  = monacoEditor.getSelection();
+  if (!sel || sel.isEmpty()) return;
+  const text = monacoEditor.getModel().getValueInRange(sel);
+  const instruction = prompt('What should AI do with this text?', 'Improve clarity and trigger phrases');
+  if (!instruction) return;
+
+  st('ide-status-text', 'AI rewriting…', 'spin');
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ __inline_edit: true, instruction, selectedText: text,
+        surroundingContext: getSkillContent().slice(0, 2000) })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    monacoEditor.executeEdits('ai', [{ range: sel, text: data.replacement || '' }]);
+    st('ide-status-text', '✓ Applied', 'ok');
+    setTimeout(() => st('ide-status-text', ''), 2000);
+  } catch(e) {
+    st('ide-status-text', '✗ ' + e.message, 'err');
+    setTimeout(() => st('ide-status-text', ''), 3000);
+  }
+}
+
+// ── AI chat ───────────────────────────────────────────────────────────────────
+function ideToggleChat() {
+  const col = el('ide-chat-col');
+  if (!col) return;
+  col.style.display = col.style.display === 'none' ? '' : 'none';
+}
+
+function ideQuick(prompt) {
+  const inp = el('ide-chat-input');
+  if (inp) { inp.value = prompt; sendIdeChat(); }
+}
+
+function clearIdeChat() {
+  ideAiHistory = [];
+  const msgs = el('ide-chat-messages');
+  if (msgs) msgs.innerHTML = '<div style="color:var(--hint);font-size:12px;font-style:italic;padding:4px">Chat cleared.</div>';
+}
+
+function appendChatMsg(role, text) {
+  const msgs = el('ide-chat-messages');
+  if (!msgs) return;
+  const d = document.createElement('div');
+  const isUser = role === 'user';
+  d.className  = isUser ? 'ide-msg-user' : 'ide-msg-ai';
+  // Simple inline formatting
+  const safe = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  d.innerHTML = (isUser ? '👤 ' : '✨ ') +
+    safe.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+        .replace(/`([^`]+)`/g,'<code>$1</code>')
+        .replace(/\n/g,'<br>');
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+
+async function sendIdeChat() {
+  const inp  = el('ide-chat-input');
+  const text = inp?.value.trim();
+  if (!text) return;
+  inp.value = '';
+
+  appendChatMsg('user', text);
+  ideAiHistory.push({ role: 'user', content: text });
+
+  const btn = el('ide-send-btn');
+  if (btn) btn.disabled = true;
+  st('s-ide-chat', 'Thinking…', 'spin');
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        __chat: true,
+        messages: ideAiHistory.slice(-20),
+        fileContexts: { 'SKILL.md': getSkillContent() },
+        skillSlug: slug,
+      })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    const reply = data.response || '';
+    ideAiHistory.push({ role: 'assistant', content: reply });
+    appendChatMsg('ai', reply);
+
+    // Apply file edits if AI returned them
+    if (data.fileEdits?.length) {
+      data.fileEdits.forEach(({ file, content }) => {
+        if (file === 'SKILL.md' && content) {
+          setSkillContent(content);
+          appendChatMsg('ai', '📝 Applied edit to SKILL.md');
+        }
+      });
+    }
+  } catch(e) {
+    appendChatMsg('ai', '✗ ' + e.message);
+  }
+  if (btn) btn.disabled = false;
+  st('s-ide-chat', '');
+}
+
+// ── Trigger IDE init when entering Review step ────────────────────────────────
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+initSkillCategorySelect();
+loadSavedConfig();
+const catSelBoot = el("f-skill-category");
+if (catSelBoot) catSelBoot.value = categoryFromPathPrefix(cfg.path);
+// Lazy-load server config and skill index after a short delay
+// so page renders first and fetch errors don't block the UI
+setTimeout(() => {
+  loadServerConfig();
+  fetchSkillIndex(false);
+}, 300);
+</script>
+</body>
+</html>

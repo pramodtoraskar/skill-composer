@@ -19,12 +19,8 @@
 ## Demo
 
 <p align="center">
-  <video src="docs/demo.mp4" controls muted playsinline width="800" poster="docs/demo-poster.png">
-    <a href="docs/demo.mp4">Watch demo (MP4)</a>
-  </video>
+  <img src="docs/demo.gif" alt="Skill Composer — setup, create, validate, review, test, push" width="800" />
 </p>
-
-<p align="center"><sub>~15s · mocked AI + GitHub · <code>bash scripts/record-demo.sh</code> to regenerate</sub></p>
 
 > **Note:** Skill Composer helps you **author** skills that follow the [Agent Skills specification](https://agentskills.io/specification). For Anthropic’s reference implementations and examples, see **[anthropics/skills](https://github.com/anthropics/skills)** on GitHub.
 

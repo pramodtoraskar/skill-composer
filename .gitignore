@@ -33,4 +33,7 @@ secrets.json
 *.secret
 updates/
 *.docx
-*.json
+
+# Large local catalogs (upload via Setup or place under data/)
+/SKILL_INDEX.json
+/data/
